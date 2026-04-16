@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Luma SpinningAgentBall — Multi-State</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: #0a0a0a;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  .ball-container {
+    width: 96px; height: 96px;
+    background: #1a1a1a;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: transform 0.12s ease, background 0.25s ease;
+  }
+  .ball-container:hover { background: #1f1f1f; }
+  .ball-container:active { transform: scale(0.93); }
+  .state-label {
+    color: #74B8D4; font-size: 12px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    min-height: 16px;
+    transition: color 0.4s;
+  }
+  .nav {
+    display: flex; gap: 8px; align-items: center;
+  }
+  .nav .dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: #333;
+    transition: background 0.4s, transform 0.4s;
+  }
+  .nav .dot.on {
+    background: #74B8D4;
+    transform: scale(1.4);
+  }
+  .hint { color: #333; font-size: 12px; letter-spacing: 0.02em; }
+</style>
+</head>
+<body>
+
+<div class="state-label" id="label">idle</div>
+<div class="nav" id="nav"></div>
+<div class="ball-container" id="trigger">
+  <svg id="ball" width="52" height="52" viewBox="0 0 22 22"></svg>
+</div>
+<div class="hint">click to cycle</div>
+
+<script>
+// =====================================================================
+//  Luma SpinningAgentBall — 5 states: idle → thinking → pulse → swirl → ripple
+// =====================================================================
+
+// ---------- Palette ----------
+const RGB_F = [116, 184, 212];  // #74B8D4 front
+const RGB_M = [60, 120, 168];   // #3C78A8 mid
+const RGB_B = [26, 40, 64];     // #1A2840 back
+
+// ---------- Fibonacci sphere: 40 points ----------
+const PHI = Math.PI * (3 - Math.sqrt(5));
+const N = 40;
+const PTS = Array.from({ length: N }, (_, i) => {
+  const y = 1 - (2 * i) / (N - 1);
+  const r = Math.sqrt(1 - y * y);
+  const t = PHI * i;
+  return { x: Math.cos(t) * r, y, z: Math.sin(t) * r };
+});
+
+// ---------- Idle hex grid: 14 dots, diamond 2-3-4-3-2 ----------
+const S = 2.8, HH = S * 0.75, CX = 11, CY = 11;
+const ROWS = [[-0.5,0.5],[-1,0,1],[-1.5,-0.5,0.5,1.5],[-1,0,1],[-0.5,0.5]];
+const GRID = [];
+ROWS.forEach((ox, ri) => {
+  const y = CY + (ri - 2) * HH;
+  ox.forEach(o => GRID.push({ x: CX + o * S, y }));
+});
+GRID.sort((a, b) => a.y - b.y || a.x - b.x);
+
+// Map 14 front-facing fib points → grid slots
+function rot(pt, cY, sY, cX, sX) {
+  const rx = pt.x*cY + pt.z*sY, rz = -pt.x*sY + pt.z*cY;
+  return { x: rx, y: pt.y*cX - rz*sX, z: pt.y*sX + rz*cX };
+}
+const cX0 = Math.cos(0.2), sX0 = Math.sin(0.2);
+const init = PTS.map((pt, idx) => {
+  const c = rot(pt, 1, 0, cX0, sX0);
+  return { depth: (c.z+1)/2, idx };
+});
+const top14 = [...init].sort((a,b) => b.depth - a.depth).slice(0, 14);
+top14.sort((a, b) => {
+  const ca = rot(PTS[a.idx],1,0,cX0,sX0), cb = rot(PTS[b.idx],1,0,cX0,sX0);
+  return ca.y - cb.y || ca.x - cb.x;
+});
+const slot = new Int8Array(N).fill(-1);
+top14.forEach((p, i) => slot[p.idx] = i);
+
+// ---------- Helpers ----------
+const lerp  = (a, b, t) => a + (b - a) * t;
+const clamp = v => v < 0 ? 0 : v > 1 ? 1 : v;
+const easeOut3  = t => 1 - (1-t)**3;
+const easeIO3   = t => t < .5 ? 4*t*t*t : 1 - (-2*t+2)**3/2;
+const rgbStr    = c => `rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
+const lerpC     = (a, b, t) => [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
+const depthRGB  = d => d > .65 ? RGB_F : d > .4 ? RGB_M : RGB_B;
+
+// ---------- 5 STATE FUNCTIONS  (time) → particle[40] ----------
+// Each returns { sx, sy, depth, r, opacity, rgb, idx } per point
+
+function stateIdle(_t) {
+  return PTS.map((_, idx) => {
+    const s = slot[idx];
+    if (s >= 0) {
+      const g = GRID[s];
+      return { sx: g.x, sy: g.y, depth: .8, r: .62, opacity: .88, rgb: RGB_F, idx };
+    }
+    return { sx: CX, sy: CY, depth: 0, r: .2, opacity: 0, rgb: RGB_F, idx };
+  });
+}
+
+function stateThinking(time) {
+  const a = time * 1.4;
+  const cY = Math.cos(a), sY = Math.sin(a), cX = Math.cos(.2), sX = Math.sin(.2);
+  return PTS.map((pt, idx) => {
+    const c = rot(pt, cY, sY, cX, sX);
+    const d = (c.z+1)/2;
+    let r = .95*(.4+.6*d), op = (.2+.8*d)*.9;
+    // band highlight
+    const band = Math.abs(c.x - .85*Math.sin(2.2*time));
+    if (band < .5 && d > .25) {
+      const i = (1-band/.5)*Math.min(1,(d-.25)/.3);
+      r *= 1+.7*i; op = Math.min(1, op+.9*i);
+    }
+    return { sx: 9.5*c.x+CX, sy: 9.5*c.y+CY, depth: d,
+             r: Math.max(.4,r), opacity: clamp(op), rgb: depthRGB(d), idx };
+  });
+}
+
+function statePulse(time) {
+  const a = time * .35;
+  const breath = 1 + .14 * Math.sin(time * 1.8);
+  const cY = Math.cos(a), sY = Math.sin(a), cX = Math.cos(.3), sX = Math.sin(.3);
+  return PTS.map((pt, idx) => {
+    const c = rot(pt, cY, sY, cX, sX);
+    const d = (c.z+1)/2;
+    const R = 9.5 * breath;
+    // pulsing glow wave rolling from top to bottom
+    const wave = .5 + .5*Math.sin(time*1.8 - c.y*2);
+    const r  = .45 + .35*d + .2*wave;
+    const op = (.25 + .5*d + .25*wave) * .95;
+    return { sx: R*c.x+CX, sy: R*c.y+CY, depth: d,
+             r: Math.max(.35,r), opacity: clamp(op), rgb: depthRGB(d), idx };
+  });
+}
+
+function stateSwirl(time) {
+  const cX = Math.cos(.38), sX = Math.sin(.38);
+  return PTS.map((pt, idx) => {
+    // differential rotation: top fast, bottom slow
+    const lat = pt.y;
+    const speed = 1.6 * (1 + .8*lat);
+    const a = time * speed;
+    const cA = Math.cos(a), sA = Math.sin(a);
+    const rx = pt.x*cA + pt.z*sA, rz = -pt.x*sA + pt.z*cA;
+    const x = rx, y = pt.y*cX - rz*sX, z = pt.y*sX + rz*cX;
+    const d = (z+1)/2;
+    // spiral band
+    const sa = Math.atan2(rz, rx);
+    const phase = sa - time*2.8 + lat*Math.PI;
+    const hi = Math.max(0, (.5+.5*Math.sin(phase))-.7) / .3;
+    const r  = .95*(.4+.6*d)*(1+.5*hi);
+    const op = ((.2+.8*d) + .3*hi) * .9;
+    return { sx: 9.5*x+CX, sy: 9.5*y+CY, depth: d,
+             r: Math.max(.4,r), opacity: clamp(op), rgb: depthRGB(d), idx };
+  });
+}
+
+function stateRipple(time) {
+  const a = time * .18;
+  const cY = Math.cos(a), sY = Math.sin(a), cX = Math.cos(.22), sX = Math.sin(.22);
+  return PTS.map((pt, idx) => {
+    // concentric ripple from top pole
+    const dist = Math.acos(Math.max(-1, Math.min(1, pt.y)));
+    const wave = Math.sin(dist*3.5 - time*2.8) * .16;
+    const sc = 1 + wave;
+    const dp = { x: pt.x*sc, y: pt.y*sc, z: pt.z*sc };
+    const c = rot(dp, cY, sY, cX, sX);
+    const d = (c.z+1)/2;
+    // ripple crest highlight
+    const crest = .5 + .5*Math.cos(dist*3.5 - time*2.8);
+    const hi = crest > .78 ? (crest-.78)/.22 : 0;
+    const r  = .95*(.4+.6*d)*(1+.4*hi);
+    const op = ((.2+.8*d) + .25*hi) * .9;
+    return { sx: 9.5*c.x+CX, sy: 9.5*c.y+CY, depth: d,
+             r: Math.max(.4,r), opacity: clamp(op), rgb: depthRGB(d), idx };
+  });
+}
+
+const STATES = [
+  { name: 'idle',     fn: stateIdle },
+  { name: 'thinking', fn: stateThinking },
+  { name: 'pulse',    fn: statePulse },
+  { name: 'swirl',    fn: stateSwirl },
+  { name: 'ripple',   fn: stateRipple },
+];
+
+// ---------- Blend two particle arrays ----------
+function blend(from, to, t) {
+  return from.map((f, i) => {
+    const p = to[i];
+    return {
+      sx:      lerp(f.sx, p.sx, t),
+      sy:      lerp(f.sy, p.sy, t),
+      depth:   lerp(f.depth, p.depth, t),
+      r:       Math.max(.2, lerp(f.r, p.r, t)),
+      opacity: clamp(lerp(f.opacity, p.opacity, t)),
+      rgb:     lerpC(f.rgb, p.rgb, t),
+      idx:     f.idx,
+    };
+  });
+}
+
+// ---------- DOM setup ----------
+const svg     = document.getElementById("ball");
+const trigger = document.getElementById("trigger");
+const labelEl = document.getElementById("label");
+const navEl   = document.getElementById("nav");
+const ns      = "http://www.w3.org/2000/svg";
+
+const circles = PTS.map(() => {
+  const el = document.createElementNS(ns, "circle");
+  svg.appendChild(el);
+  return el;
+});
+
+// Nav dots
+const dots = STATES.map((_, i) => {
+  const d = document.createElement("span");
+  d.className = "dot" + (i === 0 ? " on" : "");
+  navEl.appendChild(d);
+  return d;
+});
+
+// ---------- State machine ----------
+let fromIdx  = 0;
+let toIdx    = 0;
+let progress = 1;      // 1 = fully arrived at toIdx
+let trStart  = null;
+
+function transitionDuration(from, to) {
+  if (STATES[to].name === 'idle') return 1.2;
+  if (STATES[from].name === 'idle') return 0.7;
+  return 0.8;
+}
+function transitionEase(from, to) {
+  if (STATES[from].name === 'idle') return easeOut3;
+  return easeIO3;
+}
+
+trigger.addEventListener("click", () => {
+  fromIdx   = toIdx;
+  toIdx     = (toIdx + 1) % STATES.length;
+  progress  = 0;
+  trStart   = null;
+  // UI
+  labelEl.textContent = STATES[toIdx].name;
+  dots.forEach((d, i) => d.classList.toggle("on", i === toIdx));
+});
+
+// ---------- Animation loop ----------
+let elapsed  = 0;
+let lastTime = 0;
+
+function frame(now) {
+  const t  = now / 1000;
+  const dt = lastTime === 0 ? .016 : Math.min(t - lastTime, .05);
+  lastTime = t;
+  elapsed += dt;
+
+  // Advance transition
+  if (progress < 1) {
+    if (trStart === null) trStart = t;
+    const dur  = transitionDuration(fromIdx, toIdx);
+    const ease = transitionEase(fromIdx, toIdx);
+    const raw  = clamp((t - trStart) / dur);
+    progress   = ease(raw);
+    if (raw >= 1) progress = 1;
+  }
+
+  // Compute particles
+  let particles;
+  if (progress >= 1) {
+    particles = STATES[toIdx].fn(elapsed);
+  } else {
+    particles = blend(STATES[fromIdx].fn(elapsed), STATES[toIdx].fn(elapsed), progress);
+  }
+
+  // Render (fixed circle per fib index, reorder for depth)
+  particles.forEach(p => {
+    const el = circles[p.idx];
+    el.setAttribute("cx", p.sx);
+    el.setAttribute("cy", p.sy);
+    el.setAttribute("r",  p.r);
+    el.setAttribute("fill", rgbStr(p.rgb));
+    el.setAttribute("opacity", p.opacity < .005 ? 0 : p.opacity);
+    el._d = p.depth;
+  });
+  [...circles].sort((a, b) => a._d - b._d).forEach(el => svg.appendChild(el));
+
+  requestAnimationFrame(frame);
+}
+
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
