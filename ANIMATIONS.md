@@ -105,16 +105,16 @@
 |----------|-------|
 | Motion | 3 independent orbital rings |
 | Shape | Circles at different tilted planes |
-| Highlight | Depth-based only |
+| Highlight | Comet trail — bright arc chasing each ring |
 
-**Concept**: Atom / gyroscope. Three rings of dots orbit the center at different inclinations and speeds, like electron shells.
+**Concept**: Atom / gyroscope. Three rings of dots orbit the center at different inclinations and speeds, like electron shells. A bright "comet" arc sweeps around each ring slightly faster than the ring itself.
 
 **Math**:
 - Ring 1 (14 dots): tiltX=0.25, near-horizontal, 1.3 rad/s CW
 - Ring 2 (13 dots): tiltX=1.15 tiltZ=0.55, steep, −0.85 rad/s CCW
 - Ring 3 (13 dots): tiltX=−0.75 tiltZ=−0.4, opposite tilt, 0.6 rad/s CW
 - Each point: unit circle → tilt around X → tilt around Z → project
-- Rings are roughly 60° apart in orientation for clear visual separation
+- **Band**: reference angle at 1.6× ring speed, `atan2(sin(angle−ref), cos(angle−ref))` for shortest arc distance, quadratic falloff `(1−d/0.8)²` within 0.8 rad
 
 ---
 
@@ -124,36 +124,34 @@
 |----------|-------|
 | Motion | Rotation around vertical axis @ 0.9 rad/s |
 | Shape | Two intertwined helical strands |
-| Highlight | Depth-based only |
+| Highlight | Traveling pulse — bright dot runs along each strand |
 
-**Concept**: DNA double helix. 40 dots split into 2 strands of 20, winding around a vertical axis. The entire structure rotates.
+**Concept**: DNA double helix. 40 dots split into 2 strands of 20, winding around a vertical axis. A bright pulse travels along each strand continuously, offset by half a cycle between strands.
 
 **Math**:
 - Strand assignment: even indices → strand 0, odd → strand 1
 - Helix angle: `t × 1.5 × 2π + strand × π + time × 0.9`
-- 1.5 full turns visible
-- x = cos(angle), z = sin(angle), y spans [−1, 1]
+- 1.5 full turns, x = cos(angle), z = sin(angle), y spans [−1, 1]
 - Projection: x scaled ×5.2, y scaled ×7.2 from center
-- Depth from z component (front/back of helix)
+- **Band**: pulse position `(time×0.5 + strand×0.5) mod 1`, wrapped distance to each dot's `t` parameter, quadratic falloff within 0.12
 
 ---
 
-### 7. galaxy — 银河旋臂
+### 7. nova — 脉冲星
 
 | Property | Value |
 |----------|-------|
-| Motion | Keplerian differential rotation in disc |
-| Shape | Flattened sphere → thin disc, tilted 0.55 rad |
-| Highlight | Depth-based only |
+| Motion | Slow rotation @ 0.4 rad/s + cascading radial pulse |
+| Shape | Sphere with oscillating per-point radius |
+| Highlight | Scanning latitude band sweeping pole to pole |
 
-**Concept**: Spiral galaxy. The sphere flattens into a disc viewed at an angle. Inner points rotate faster than outer points (like real galaxies).
+**Concept**: Pulsating energy orb. Each point expands and contracts radially with a phase offset based on its longitude and latitude, creating a cascading ripple of expansion across the sphere. A bright horizontal band sweeps up and down.
 
 **Math**:
-- Flatten: `y_flat = pt.y × 0.12` (compress to ~12% height)
-- Radial distance: `sqrt(x² + z²)`
-- Speed: `0.8 / (0.3 + dist × 1.5)` — Keplerian falloff, inner ≈5× faster than outer
-- View tilt: 0.55 rad around X-axis gives perspective of a tilted disc
-- Fibonacci distribution ensures even dot density across the disc
+- Phase delay: `atan2(pt.z, pt.x) × 0.4 + pt.y × 0.7` — diagonal cascade
+- Radial scale: `0.65 + 0.35 × sin(t × 1.6 + delay)` — each point between 30%–100% radius
+- **Band**: `|pt.y − sin(t × 1.3)|`, power falloff 1.5 within 0.28, boosts size ×1.65 and opacity +0.45
+- Band highlight blends color toward front blue via `lerpC`
 
 ---
 
@@ -163,17 +161,16 @@
 |----------|-------|
 | Motion | Pseudo-random organic drift |
 | Shape | Loose cloud (no rigid structure) |
-| Highlight | Per-dot random twinkling + flash |
+| Highlight | Per-dot twinkling + sweeping searchlight glow |
 
-**Concept**: Fireflies in a jar. Each dot drifts slowly on its own path and periodically twinkles bright. The most organic, non-geometric state.
+**Concept**: Fireflies in a jar with a soft searchlight sweeping through the cloud. Each dot drifts on its own path, twinkles independently, and brightens when the searchlight passes nearby.
 
 **Math**:
 - Seed: `idx × φ` (golden ratio for maximum variety)
 - Drift: sum of 2 sine waves per axis at irrational frequency ratios
-  - `sin(t×0.31 + seed×3.7)×0.45 + sin(t×0.17 + seed×2.3)×0.25`
-  - Frequencies chosen to avoid repeating patterns
-- Twinkle speed: `1.5 + sin(seed×7.1)×0.8` — each dot has its own rhythm
-- Flash: triggers when twinkle > 0.85, boosts size and switches to front color
+- Twinkle: per-dot speed `1.5 + sin(seed×7.1)×0.8`, flash at threshold > 0.82
+- **Searchlight**: center at `(sin(t×0.55)×0.75, cos(t×0.38)×0.75)`, radius 0.65, power falloff 0.8
+- `hi = max(flash, glow)` — either trigger brightens the dot
 
 ---
 
@@ -207,3 +204,6 @@ All transitions interpolate per-particle: position, size, opacity, and color are
 - **wave-2d** — surface wave: XY plane standing wave pattern, no sphere structure
 - **split** — mitosis: sphere splits into two smaller spheres that orbit each other
 - **magnetic** — field lines: dots trace paths along a dipole magnetic field
+- **chain** — Lissajous whip: dots form a single 3D curve with traveling pulse
+- **galaxy** — flattened disc with Keplerian rotation (tried, too sparse with 40 dots — needs 80+)
+- **pendulum** — wave pendulum: each dot swings at slightly different frequency, creating phase patterns

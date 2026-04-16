@@ -58,7 +58,7 @@
 <script>
 // =====================================================================
 //  Dot Animate — 9 states
-//  idle → thinking → pulse → swirl → ripple → orbit → helix → galaxy → firefly
+//  idle → thinking → pulse → swirl → ripple → orbit → helix → nova → firefly
 // =====================================================================
 
 // ---------- Palette ----------
@@ -176,34 +176,39 @@ function stateRipple(time) {
   });
 }
 
-// 5 ── ORBIT: 3 independent orbital rings ─────────────────────────────
+// 5 ── ORBIT: 3 orbital rings + comet-trail band ─────────────────────
 function stateOrbit(time) {
   const rings = [
-    { tx:  .25, tz:  0,   spd:  1.3, s: 0,  n: 14 },   // near-horizontal, fast CW
-    { tx: 1.15, tz:  .55, spd: -.85, s: 14, n: 13 },   // steep tilt, CCW
-    { tx: -.75, tz: -.4,  spd:  .6,  s: 27, n: 13 },   // opposite tilt, slow CW
+    { tx:  .25, tz:  0,   spd:  1.3, s: 0,  n: 14 },
+    { tx: 1.15, tz:  .55, spd: -.85, s: 14, n: 13 },
+    { tx: -.75, tz: -.4,  spd:  .6,  s: 27, n: 13 },
   ];
   return PTS.map((pt, idx) => {
     const ring = rings.find(r => idx >= r.s && idx < r.s + r.n);
     const pos = idx - ring.s;
     const angle = (pos / ring.n) * Math.PI * 2 + time * ring.spd;
 
-    // Unit circle in XZ plane
     let x = Math.cos(angle), y = 0, z = Math.sin(angle);
-    // Tilt around X
     const cx1=Math.cos(ring.tx),sx1=Math.sin(ring.tx);
     let y1=y*cx1-z*sx1, z1=y*sx1+z*cx1;
-    // Tilt around Z
     const cz1=Math.cos(ring.tz),sz1=Math.sin(ring.tz);
     const x2=x*cz1-y1*sz1, y2=x*sz1+y1*cz1;
 
     const d = clamp((z1+1)/2);
+    // Comet trail: bright arc chasing each ring at 1.6× ring speed
+    const ref = time * ring.spd * 1.6;
+    const diff = Math.atan2(Math.sin(angle-ref), Math.cos(angle-ref));
+    const trail = Math.abs(diff);
+    const hi = trail < .8 ? (1-trail/.8)**2 : 0;
+
+    const r = Math.max(.38, (.42+.44*d)*(1+.6*hi));
+    const op = clamp((.2+.7*d) + .5*hi);
     return { sx:8.5*x2+CX, sy:8.5*y2+CY, depth:d,
-             r:Math.max(.38,.42+.44*d), opacity:clamp(.2+.7*d), rgb:dRGB(d), idx };
+             r, opacity:op, rgb: hi>.4 ? lerpC(dRGB(d),RGB_F,hi) : dRGB(d), idx };
   });
 }
 
-// 6 ── HELIX: DNA double helix rotating around vertical axis ─────────
+// 6 ── HELIX: DNA double helix + traveling pulse band ────────────────
 function stateHelix(time) {
   return PTS.map((pt, idx) => {
     const strand = idx % 2;
@@ -219,56 +224,76 @@ function stateHelix(time) {
     const y = t * 2 - 1;                                    // −1 → +1 top to bottom
     const d = clamp((z + 1) / 2);
 
+    // Traveling pulse: bright dot runs along each strand and wraps
+    const pulseT = ((time * .5 + strand * .5) % 1);         // offset per strand
+    const dist = Math.abs(t - pulseT);
+    const wrap = Math.min(dist, 1 - dist);
+    const hi = wrap < .12 ? (1 - wrap/.12)**2 : 0;
+
+    const r = Math.max(.38, (.42+.42*d)*(1+.7*hi));
+    const op = clamp((.2+.72*d) + .55*hi);
     return { sx: x*5.2+CX, sy: y*7.2+CY, depth: d,
-             r: Math.max(.38, .42+.42*d), opacity: clamp(.2+.72*d), rgb: dRGB(d), idx };
+             r, opacity: op, rgb: hi>.3 ? lerpC(dRGB(d),RGB_F,hi) : dRGB(d), idx };
   });
 }
 
-// 7 ── GALAXY: flattened disc + Keplerian differential rotation ──────
-function stateGalaxy(time) {
-  const tilt=.55, cT=Math.cos(tilt), sT=Math.sin(tilt);
+// 7 ── NOVA: cascading radial pulse + sweeping latitude band ─────────
+function stateNova(time) {
+  const a=time*.4, cY=Math.cos(a),sY=Math.sin(a),cX=Math.cos(.2),sX=Math.sin(.2);
   return PTS.map((pt, idx) => {
-    // Flatten sphere to thin disc
-    const fy = pt.y * .12;
-    // Differential rotation: inner spins faster
-    const dist = Math.sqrt(pt.x*pt.x + pt.z*pt.z) || .01;
-    const spd = .8 / (.3 + dist*1.5);
-    const a = time * spd;
-    const cA=Math.cos(a),sA=Math.sin(a);
-    const rx=pt.x*cA+pt.z*sA, rz=-pt.x*sA+pt.z*cA;
-    // Tilt disc for perspective
-    const y2=fy*cT-rz*sT, z2=fy*sT+rz*cT;
-    const d = clamp((z2+1)/2);
+    // Cascading radial pulse: each point expands/contracts with phase offset
+    const lon = Math.atan2(pt.z, pt.x);
+    const delay = lon*.4 + pt.y*.7;
+    const pulse = Math.sin(time*1.6 + delay);
+    const scale = .65 + .35*pulse;                           // 0.3 → 1.0
 
-    return { sx:9.5*rx+CX, sy:9.5*y2+CY, depth:d,
-             r:Math.max(.4,.45+.4*d), opacity:clamp(.25+.65*d), rgb:dRGB(d), idx };
+    const c = rot(pt, cY, sY, cX, sX);
+    const d = clamp((c.z*scale+1)/2);
+
+    // Scanning band: horizontal sweep in object space
+    const bandY = Math.sin(time*1.3);
+    const bandDist = Math.abs(pt.y - bandY);
+    const hi = bandDist < .28 ? (1-bandDist/.28)**1.5 : 0;
+
+    const r = .95*(.4+.6*d)*(1+.65*hi);
+    const op = ((.2+.8*d)+.45*hi)*.9;
+    return { sx:9.5*scale*c.x+CX, sy:9.5*scale*c.y+CY, depth:d,
+             r:Math.max(.4,r), opacity:clamp(op),
+             rgb: hi>.4 ? lerpC(dRGB(d),RGB_F,hi) : dRGB(d), idx };
   });
 }
 
-// 8 ── FIREFLY: organic drift + pseudo-random twinkling ──────────────
+// 8 ── FIREFLY: organic drift + twinkling + sweeping searchlight ─────
 function stateFirefly(time) {
+  // Searchlight: a soft glow sweeping through the cloud
+  const glowX = Math.sin(time*.55)*.75;
+  const glowY = Math.cos(time*.38)*.75;
+
   return PTS.map((pt, idx) => {
-    const s = idx * 1.618033;                                // golden-ratio seed
+    const s = idx * 1.618033;
 
     // Multi-frequency slow drift
     const dx = Math.sin(time*.31+s*3.7)*.45 + Math.sin(time*.17+s*2.3)*.25;
     const dy = Math.cos(time*.23+s*4.1)*.45 + Math.sin(time*.13+s*1.9)*.25;
     const dz = Math.sin(time*.19+s*5.3)*.35;
 
-    const x = pt.x*.75 + dx;
-    const y = pt.y*.75 + dy;
-    const z = pt.z*.55 + dz;
+    const x = pt.x*.75+dx, y = pt.y*.75+dy, z = pt.z*.55+dz;
     const d = clamp((z+1)/2);
 
-    // Twinkle: each dot has its own rhythm
-    const twSpd = 1.5 + Math.sin(s*7.1)*.8;
-    const tw = .5 + .5*Math.sin(time*twSpd + s*13.3);
-    const flash = tw > .85 ? (tw-.85)/.15 : 0;
+    // Per-dot twinkle
+    const twSpd = 1.5+Math.sin(s*7.1)*.8;
+    const tw = .5+.5*Math.sin(time*twSpd+s*13.3);
+    const flash = tw>.82 ? (tw-.82)/.18 : 0;
 
-    return { sx:8*x+CX, sy:8*y+CY, depth:d,
-             r:  Math.max(.3, .38+.2*d+.3*flash),
-             opacity: clamp(.25+.3*d+.4*tw),
-             rgb: flash>.3 ? RGB_F : (d>.5 ? RGB_M : RGB_B), idx };
+    // Searchlight glow proximity
+    const glowDist = Math.sqrt((x-glowX)**2+(y-glowY)**2);
+    const glow = glowDist < .65 ? (1-glowDist/.65)**.8 : 0;
+
+    const hi = Math.max(flash, glow);
+    const r  = Math.max(.3, .38+.2*d+.35*hi);
+    const op = clamp(.2+.25*d+.3*tw+.35*glow);
+    return { sx:8*x+CX, sy:8*y+CY, depth:d, r, opacity:op,
+             rgb: hi>.4 ? lerpC(d>.5?RGB_M:RGB_B, RGB_F, hi) : (d>.5?RGB_M:RGB_B), idx };
   });
 }
 
@@ -283,7 +308,7 @@ const STATES = [
   { name: 'ripple',   fn: stateRipple },
   { name: 'orbit',    fn: stateOrbit },
   { name: 'helix',    fn: stateHelix },
-  { name: 'galaxy',   fn: stateGalaxy },
+  { name: 'nova',     fn: stateNova },
   { name: 'firefly',  fn: stateFirefly },
 ];
 
