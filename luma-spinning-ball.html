@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Luma SpinningAgentBall — Multi-State</title>
+<title>Dot Animate — 9 States</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -34,22 +34,15 @@
     color: #74B8D4; font-size: 12px;
     font-family: 'SF Mono', 'Fira Code', monospace;
     letter-spacing: 0.08em; text-transform: uppercase;
-    min-height: 16px;
-    transition: color 0.4s;
+    min-height: 16px; transition: color 0.4s;
   }
-  .nav {
-    display: flex; gap: 8px; align-items: center;
-  }
+  .nav { display: flex; gap: 7px; align-items: center; }
   .nav .dot {
     width: 5px; height: 5px;
-    border-radius: 50%;
-    background: #333;
+    border-radius: 50%; background: #333;
     transition: background 0.4s, transform 0.4s;
   }
-  .nav .dot.on {
-    background: #74B8D4;
-    transform: scale(1.4);
-  }
+  .nav .dot.on { background: #74B8D4; transform: scale(1.4); }
   .hint { color: #333; font-size: 12px; letter-spacing: 0.02em; }
 </style>
 </head>
@@ -64,13 +57,14 @@
 
 <script>
 // =====================================================================
-//  Luma SpinningAgentBall — 5 states: idle → thinking → pulse → swirl → ripple
+//  Dot Animate — 9 states
+//  idle → thinking → pulse → swirl → ripple → orbit → helix → galaxy → firefly
 // =====================================================================
 
 // ---------- Palette ----------
-const RGB_F = [116, 184, 212];  // #74B8D4 front
-const RGB_M = [60, 120, 168];   // #3C78A8 mid
-const RGB_B = [26, 40, 64];     // #1A2840 back
+const RGB_F = [116, 184, 212];   // #74B8D4  front
+const RGB_M = [60, 120, 168];    // #3C78A8  mid
+const RGB_B = [26, 40, 64];      // #1A2840  back
 
 // ---------- Fibonacci sphere: 40 points ----------
 const PHI = Math.PI * (3 - Math.sqrt(5));
@@ -83,248 +77,281 @@ const PTS = Array.from({ length: N }, (_, i) => {
 });
 
 // ---------- Idle hex grid: 14 dots, diamond 2-3-4-3-2 ----------
-const S = 2.8, HH = S * 0.75, CX = 11, CY = 11;
+const SP = 2.8, HH = SP * .75, CX = 11, CY = 11;
 const ROWS = [[-0.5,0.5],[-1,0,1],[-1.5,-0.5,0.5,1.5],[-1,0,1],[-0.5,0.5]];
 const GRID = [];
-ROWS.forEach((ox, ri) => {
-  const y = CY + (ri - 2) * HH;
-  ox.forEach(o => GRID.push({ x: CX + o * S, y }));
-});
+ROWS.forEach((ox, ri) => { const y = CY+(ri-2)*HH; ox.forEach(o => GRID.push({x:CX+o*SP,y})); });
 GRID.sort((a, b) => a.y - b.y || a.x - b.x);
 
 // Map 14 front-facing fib points → grid slots
 function rot(pt, cY, sY, cX, sX) {
-  const rx = pt.x*cY + pt.z*sY, rz = -pt.x*sY + pt.z*cY;
-  return { x: rx, y: pt.y*cX - rz*sX, z: pt.y*sX + rz*cX };
+  const rx = pt.x*cY+pt.z*sY, rz = -pt.x*sY+pt.z*cY;
+  return { x:rx, y:pt.y*cX-rz*sX, z:pt.y*sX+rz*cX };
 }
-const cX0 = Math.cos(0.2), sX0 = Math.sin(0.2);
-const init = PTS.map((pt, idx) => {
-  const c = rot(pt, 1, 0, cX0, sX0);
-  return { depth: (c.z+1)/2, idx };
-});
-const top14 = [...init].sort((a,b) => b.depth - a.depth).slice(0, 14);
-top14.sort((a, b) => {
-  const ca = rot(PTS[a.idx],1,0,cX0,sX0), cb = rot(PTS[b.idx],1,0,cX0,sX0);
-  return ca.y - cb.y || ca.x - cb.x;
+const cX0 = Math.cos(.2), sX0 = Math.sin(.2);
+const top14 = [...PTS.map((pt,idx) => {
+  const c = rot(pt,1,0,cX0,sX0); return {depth:(c.z+1)/2,idx};
+})].sort((a,b) => b.depth-a.depth).slice(0,14);
+top14.sort((a,b) => {
+  const ca=rot(PTS[a.idx],1,0,cX0,sX0), cb=rot(PTS[b.idx],1,0,cX0,sX0);
+  return ca.y-cb.y||ca.x-cb.x;
 });
 const slot = new Int8Array(N).fill(-1);
-top14.forEach((p, i) => slot[p.idx] = i);
+top14.forEach((p,i) => slot[p.idx]=i);
 
 // ---------- Helpers ----------
-const lerp  = (a, b, t) => a + (b - a) * t;
-const clamp = v => v < 0 ? 0 : v > 1 ? 1 : v;
-const easeOut3  = t => 1 - (1-t)**3;
-const easeIO3   = t => t < .5 ? 4*t*t*t : 1 - (-2*t+2)**3/2;
-const rgbStr    = c => `rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
-const lerpC     = (a, b, t) => [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
-const depthRGB  = d => d > .65 ? RGB_F : d > .4 ? RGB_M : RGB_B;
+const lerp    = (a,b,t) => a+(b-a)*t;
+const clamp   = v => v<0?0:v>1?1:v;
+const easeO3  = t => 1-(1-t)**3;
+const easeIO3 = t => t<.5?4*t*t*t:1-(-2*t+2)**3/2;
+const rgbStr  = c => `rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
+const lerpC   = (a,b,t) => [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
+const dRGB    = d => d>.65?RGB_F:d>.4?RGB_M:RGB_B;
 
-// ---------- 5 STATE FUNCTIONS  (time) → particle[40] ----------
-// Each returns { sx, sy, depth, r, opacity, rgb, idx } per point
+// =====================================================================
+//  9 STATE FUNCTIONS — each (time) → particle[40]
+//  particle: { sx, sy, depth, r, opacity, rgb, idx }
+// =====================================================================
 
-function stateIdle(_t) {
-  return PTS.map((_, idx) => {
+// 0 ── IDLE: static hex grid ──────────────────────────────────────────
+function stateIdle() {
+  return PTS.map((_,idx) => {
     const s = slot[idx];
-    if (s >= 0) {
-      const g = GRID[s];
-      return { sx: g.x, sy: g.y, depth: .8, r: .62, opacity: .88, rgb: RGB_F, idx };
-    }
-    return { sx: CX, sy: CY, depth: 0, r: .2, opacity: 0, rgb: RGB_F, idx };
+    if (s >= 0) { const g=GRID[s]; return {sx:g.x,sy:g.y,depth:.8,r:.62,opacity:.88,rgb:RGB_F,idx}; }
+    return {sx:CX,sy:CY,depth:0,r:.2,opacity:0,rgb:RGB_F,idx};
   });
 }
 
+// 1 ── THINKING: Y-spin + horizontal band sweep ──────────────────────
 function stateThinking(time) {
-  const a = time * 1.4;
-  const cY = Math.cos(a), sY = Math.sin(a), cX = Math.cos(.2), sX = Math.sin(.2);
-  return PTS.map((pt, idx) => {
-    const c = rot(pt, cY, sY, cX, sX);
-    const d = (c.z+1)/2;
-    let r = .95*(.4+.6*d), op = (.2+.8*d)*.9;
-    // band highlight
-    const band = Math.abs(c.x - .85*Math.sin(2.2*time));
-    if (band < .5 && d > .25) {
-      const i = (1-band/.5)*Math.min(1,(d-.25)/.3);
-      r *= 1+.7*i; op = Math.min(1, op+.9*i);
-    }
-    return { sx: 9.5*c.x+CX, sy: 9.5*c.y+CY, depth: d,
-             r: Math.max(.4,r), opacity: clamp(op), rgb: depthRGB(d), idx };
+  const a=time*1.4, cY=Math.cos(a), sY=Math.sin(a), cX=Math.cos(.2), sX=Math.sin(.2);
+  return PTS.map((pt,idx) => {
+    const c=rot(pt,cY,sY,cX,sX), d=(c.z+1)/2;
+    let r=.95*(.4+.6*d), op=(.2+.8*d)*.9;
+    const band=Math.abs(c.x-.85*Math.sin(2.2*time));
+    if (band<.5&&d>.25){const i=(1-band/.5)*Math.min(1,(d-.25)/.3);r*=1+.7*i;op=Math.min(1,op+.9*i);}
+    return {sx:9.5*c.x+CX,sy:9.5*c.y+CY,depth:d,r:Math.max(.4,r),opacity:clamp(op),rgb:dRGB(d),idx};
   });
 }
 
+// 2 ── PULSE: breathing scale + vertical glow wave ───────────────────
 function statePulse(time) {
-  const a = time * .35;
-  const breath = 1 + .14 * Math.sin(time * 1.8);
-  const cY = Math.cos(a), sY = Math.sin(a), cX = Math.cos(.3), sX = Math.sin(.3);
-  return PTS.map((pt, idx) => {
-    const c = rot(pt, cY, sY, cX, sX);
-    const d = (c.z+1)/2;
-    const R = 9.5 * breath;
-    // pulsing glow wave rolling from top to bottom
-    const wave = .5 + .5*Math.sin(time*1.8 - c.y*2);
-    const r  = .45 + .35*d + .2*wave;
-    const op = (.25 + .5*d + .25*wave) * .95;
-    return { sx: R*c.x+CX, sy: R*c.y+CY, depth: d,
-             r: Math.max(.35,r), opacity: clamp(op), rgb: depthRGB(d), idx };
+  const a=time*.35, breath=1+.14*Math.sin(time*1.8);
+  const cY=Math.cos(a),sY=Math.sin(a),cX=Math.cos(.3),sX=Math.sin(.3);
+  return PTS.map((pt,idx) => {
+    const c=rot(pt,cY,sY,cX,sX), d=(c.z+1)/2, R=9.5*breath;
+    const wave=.5+.5*Math.sin(time*1.8-c.y*2);
+    const r=.45+.35*d+.2*wave, op=(.25+.5*d+.25*wave)*.95;
+    return {sx:R*c.x+CX,sy:R*c.y+CY,depth:d,r:Math.max(.35,r),opacity:clamp(op),rgb:dRGB(d),idx};
   });
 }
 
+// 3 ── SWIRL: differential rotation (tornado) + spiral band ──────────
 function stateSwirl(time) {
-  const cX = Math.cos(.38), sX = Math.sin(.38);
-  return PTS.map((pt, idx) => {
-    // differential rotation: top fast, bottom slow
-    const lat = pt.y;
-    const speed = 1.6 * (1 + .8*lat);
-    const a = time * speed;
-    const cA = Math.cos(a), sA = Math.sin(a);
-    const rx = pt.x*cA + pt.z*sA, rz = -pt.x*sA + pt.z*cA;
-    const x = rx, y = pt.y*cX - rz*sX, z = pt.y*sX + rz*cX;
-    const d = (z+1)/2;
-    // spiral band
-    const sa = Math.atan2(rz, rx);
-    const phase = sa - time*2.8 + lat*Math.PI;
-    const hi = Math.max(0, (.5+.5*Math.sin(phase))-.7) / .3;
-    const r  = .95*(.4+.6*d)*(1+.5*hi);
-    const op = ((.2+.8*d) + .3*hi) * .9;
-    return { sx: 9.5*x+CX, sy: 9.5*y+CY, depth: d,
-             r: Math.max(.4,r), opacity: clamp(op), rgb: depthRGB(d), idx };
+  const cX=Math.cos(.38),sX=Math.sin(.38);
+  return PTS.map((pt,idx) => {
+    const lat=pt.y, spd=1.6*(1+.8*lat), a=time*spd;
+    const cA=Math.cos(a),sA=Math.sin(a);
+    const rx=pt.x*cA+pt.z*sA, rz=-pt.x*sA+pt.z*cA;
+    const x=rx, y=pt.y*cX-rz*sX, z=pt.y*sX+rz*cX, d=(z+1)/2;
+    const sa=Math.atan2(rz,rx), phase=sa-time*2.8+lat*Math.PI;
+    const hi=Math.max(0,(.5+.5*Math.sin(phase))-.7)/.3;
+    const r=.95*(.4+.6*d)*(1+.5*hi), op=((.2+.8*d)+.3*hi)*.9;
+    return {sx:9.5*x+CX,sy:9.5*y+CY,depth:d,r:Math.max(.4,r),opacity:clamp(op),rgb:dRGB(d),idx};
   });
 }
 
+// 4 ── RIPPLE: concentric wave from pole + crest highlight ───────────
 function stateRipple(time) {
-  const a = time * .18;
-  const cY = Math.cos(a), sY = Math.sin(a), cX = Math.cos(.22), sX = Math.sin(.22);
-  return PTS.map((pt, idx) => {
-    // concentric ripple from top pole
-    const dist = Math.acos(Math.max(-1, Math.min(1, pt.y)));
-    const wave = Math.sin(dist*3.5 - time*2.8) * .16;
-    const sc = 1 + wave;
-    const dp = { x: pt.x*sc, y: pt.y*sc, z: pt.z*sc };
-    const c = rot(dp, cY, sY, cX, sX);
-    const d = (c.z+1)/2;
-    // ripple crest highlight
-    const crest = .5 + .5*Math.cos(dist*3.5 - time*2.8);
-    const hi = crest > .78 ? (crest-.78)/.22 : 0;
-    const r  = .95*(.4+.6*d)*(1+.4*hi);
-    const op = ((.2+.8*d) + .25*hi) * .9;
-    return { sx: 9.5*c.x+CX, sy: 9.5*c.y+CY, depth: d,
-             r: Math.max(.4,r), opacity: clamp(op), rgb: depthRGB(d), idx };
+  const a=time*.18, cY=Math.cos(a),sY=Math.sin(a),cX=Math.cos(.22),sX=Math.sin(.22);
+  return PTS.map((pt,idx) => {
+    const dist=Math.acos(Math.max(-1,Math.min(1,pt.y)));
+    const wave=Math.sin(dist*3.5-time*2.8)*.16, sc=1+wave;
+    const dp={x:pt.x*sc,y:pt.y*sc,z:pt.z*sc};
+    const c=rot(dp,cY,sY,cX,sX), d=(c.z+1)/2;
+    const crest=.5+.5*Math.cos(dist*3.5-time*2.8);
+    const hi=crest>.78?(crest-.78)/.22:0;
+    const r=.95*(.4+.6*d)*(1+.4*hi), op=((.2+.8*d)+.25*hi)*.9;
+    return {sx:9.5*c.x+CX,sy:9.5*c.y+CY,depth:d,r:Math.max(.4,r),opacity:clamp(op),rgb:dRGB(d),idx};
   });
 }
 
+// 5 ── ORBIT: 3 independent orbital rings ─────────────────────────────
+function stateOrbit(time) {
+  const rings = [
+    { tx:  .25, tz:  0,   spd:  1.3, s: 0,  n: 14 },   // near-horizontal, fast CW
+    { tx: 1.15, tz:  .55, spd: -.85, s: 14, n: 13 },   // steep tilt, CCW
+    { tx: -.75, tz: -.4,  spd:  .6,  s: 27, n: 13 },   // opposite tilt, slow CW
+  ];
+  return PTS.map((pt, idx) => {
+    const ring = rings.find(r => idx >= r.s && idx < r.s + r.n);
+    const pos = idx - ring.s;
+    const angle = (pos / ring.n) * Math.PI * 2 + time * ring.spd;
+
+    // Unit circle in XZ plane
+    let x = Math.cos(angle), y = 0, z = Math.sin(angle);
+    // Tilt around X
+    const cx1=Math.cos(ring.tx),sx1=Math.sin(ring.tx);
+    let y1=y*cx1-z*sx1, z1=y*sx1+z*cx1;
+    // Tilt around Z
+    const cz1=Math.cos(ring.tz),sz1=Math.sin(ring.tz);
+    const x2=x*cz1-y1*sz1, y2=x*sz1+y1*cz1;
+
+    const d = clamp((z1+1)/2);
+    return { sx:8.5*x2+CX, sy:8.5*y2+CY, depth:d,
+             r:Math.max(.38,.42+.44*d), opacity:clamp(.2+.7*d), rgb:dRGB(d), idx };
+  });
+}
+
+// 6 ── HELIX: DNA double helix rotating around vertical axis ─────────
+function stateHelix(time) {
+  return PTS.map((pt, idx) => {
+    const strand = idx % 2;
+    const pos = Math.floor(idx / 2);
+    const t = pos / 19;                                     // 0 → 1 along strand
+
+    const angle = t * 1.5 * 2 * Math.PI                     // 1.5 turns
+                + strand * Math.PI                           // 180° strand offset
+                + time * .9;                                 // rotation speed
+
+    const x = Math.cos(angle);
+    const z = Math.sin(angle);
+    const y = t * 2 - 1;                                    // −1 → +1 top to bottom
+    const d = clamp((z + 1) / 2);
+
+    return { sx: x*5.2+CX, sy: y*7.2+CY, depth: d,
+             r: Math.max(.38, .42+.42*d), opacity: clamp(.2+.72*d), rgb: dRGB(d), idx };
+  });
+}
+
+// 7 ── GALAXY: flattened disc + Keplerian differential rotation ──────
+function stateGalaxy(time) {
+  const tilt=.55, cT=Math.cos(tilt), sT=Math.sin(tilt);
+  return PTS.map((pt, idx) => {
+    // Flatten sphere to thin disc
+    const fy = pt.y * .12;
+    // Differential rotation: inner spins faster
+    const dist = Math.sqrt(pt.x*pt.x + pt.z*pt.z) || .01;
+    const spd = .8 / (.3 + dist*1.5);
+    const a = time * spd;
+    const cA=Math.cos(a),sA=Math.sin(a);
+    const rx=pt.x*cA+pt.z*sA, rz=-pt.x*sA+pt.z*cA;
+    // Tilt disc for perspective
+    const y2=fy*cT-rz*sT, z2=fy*sT+rz*cT;
+    const d = clamp((z2+1)/2);
+
+    return { sx:9.5*rx+CX, sy:9.5*y2+CY, depth:d,
+             r:Math.max(.4,.45+.4*d), opacity:clamp(.25+.65*d), rgb:dRGB(d), idx };
+  });
+}
+
+// 8 ── FIREFLY: organic drift + pseudo-random twinkling ──────────────
+function stateFirefly(time) {
+  return PTS.map((pt, idx) => {
+    const s = idx * 1.618033;                                // golden-ratio seed
+
+    // Multi-frequency slow drift
+    const dx = Math.sin(time*.31+s*3.7)*.45 + Math.sin(time*.17+s*2.3)*.25;
+    const dy = Math.cos(time*.23+s*4.1)*.45 + Math.sin(time*.13+s*1.9)*.25;
+    const dz = Math.sin(time*.19+s*5.3)*.35;
+
+    const x = pt.x*.75 + dx;
+    const y = pt.y*.75 + dy;
+    const z = pt.z*.55 + dz;
+    const d = clamp((z+1)/2);
+
+    // Twinkle: each dot has its own rhythm
+    const twSpd = 1.5 + Math.sin(s*7.1)*.8;
+    const tw = .5 + .5*Math.sin(time*twSpd + s*13.3);
+    const flash = tw > .85 ? (tw-.85)/.15 : 0;
+
+    return { sx:8*x+CX, sy:8*y+CY, depth:d,
+             r:  Math.max(.3, .38+.2*d+.3*flash),
+             opacity: clamp(.25+.3*d+.4*tw),
+             rgb: flash>.3 ? RGB_F : (d>.5 ? RGB_M : RGB_B), idx };
+  });
+}
+
+// =====================================================================
+//  State registry
+// =====================================================================
 const STATES = [
   { name: 'idle',     fn: stateIdle },
   { name: 'thinking', fn: stateThinking },
   { name: 'pulse',    fn: statePulse },
   { name: 'swirl',    fn: stateSwirl },
   { name: 'ripple',   fn: stateRipple },
+  { name: 'orbit',    fn: stateOrbit },
+  { name: 'helix',    fn: stateHelix },
+  { name: 'galaxy',   fn: stateGalaxy },
+  { name: 'firefly',  fn: stateFirefly },
 ];
 
-// ---------- Blend two particle arrays ----------
+// ---------- Blend ----------
 function blend(from, to, t) {
   return from.map((f, i) => {
     const p = to[i];
     return {
-      sx:      lerp(f.sx, p.sx, t),
-      sy:      lerp(f.sy, p.sy, t),
-      depth:   lerp(f.depth, p.depth, t),
-      r:       Math.max(.2, lerp(f.r, p.r, t)),
-      opacity: clamp(lerp(f.opacity, p.opacity, t)),
-      rgb:     lerpC(f.rgb, p.rgb, t),
-      idx:     f.idx,
+      sx:lerp(f.sx,p.sx,t), sy:lerp(f.sy,p.sy,t),
+      depth:lerp(f.depth,p.depth,t),
+      r:Math.max(.2,lerp(f.r,p.r,t)),
+      opacity:clamp(lerp(f.opacity,p.opacity,t)),
+      rgb:lerpC(f.rgb,p.rgb,t), idx:f.idx,
     };
   });
 }
 
-// ---------- DOM setup ----------
-const svg     = document.getElementById("ball");
-const trigger = document.getElementById("trigger");
-const labelEl = document.getElementById("label");
-const navEl   = document.getElementById("nav");
-const ns      = "http://www.w3.org/2000/svg";
+// ---------- DOM ----------
+const svg=document.getElementById("ball"),
+      trigger=document.getElementById("trigger"),
+      labelEl=document.getElementById("label"),
+      navEl=document.getElementById("nav"),
+      ns="http://www.w3.org/2000/svg";
 
-const circles = PTS.map(() => {
-  const el = document.createElementNS(ns, "circle");
-  svg.appendChild(el);
-  return el;
-});
-
-// Nav dots
-const dots = STATES.map((_, i) => {
-  const d = document.createElement("span");
-  d.className = "dot" + (i === 0 ? " on" : "");
-  navEl.appendChild(d);
-  return d;
-});
+const circles = PTS.map(() => { const el=document.createElementNS(ns,"circle"); svg.appendChild(el); return el; });
+const dots = STATES.map((_,i) => { const d=document.createElement("span"); d.className="dot"+(i===0?" on":""); navEl.appendChild(d); return d; });
 
 // ---------- State machine ----------
-let fromIdx  = 0;
-let toIdx    = 0;
-let progress = 1;      // 1 = fully arrived at toIdx
-let trStart  = null;
+let fromIdx=0, toIdx=0, progress=1, trStart=null;
 
-function transitionDuration(from, to) {
-  if (STATES[to].name === 'idle') return 1.2;
-  if (STATES[from].name === 'idle') return 0.7;
-  return 0.8;
-}
-function transitionEase(from, to) {
-  if (STATES[from].name === 'idle') return easeOut3;
-  return easeIO3;
-}
+function trDur(f,t) { return STATES[t].name==='idle'?1.2:STATES[f].name==='idle'?.7:.8; }
+function trEase(f)   { return STATES[f].name==='idle'?easeO3:easeIO3; }
 
 trigger.addEventListener("click", () => {
-  fromIdx   = toIdx;
-  toIdx     = (toIdx + 1) % STATES.length;
-  progress  = 0;
-  trStart   = null;
-  // UI
-  labelEl.textContent = STATES[toIdx].name;
-  dots.forEach((d, i) => d.classList.toggle("on", i === toIdx));
+  fromIdx=toIdx; toIdx=(toIdx+1)%STATES.length; progress=0; trStart=null;
+  labelEl.textContent=STATES[toIdx].name;
+  dots.forEach((d,i) => d.classList.toggle("on",i===toIdx));
 });
 
 // ---------- Animation loop ----------
-let elapsed  = 0;
-let lastTime = 0;
+let elapsed=0, lastTime=0;
 
 function frame(now) {
-  const t  = now / 1000;
-  const dt = lastTime === 0 ? .016 : Math.min(t - lastTime, .05);
-  lastTime = t;
-  elapsed += dt;
+  const t=now/1e3, dt=lastTime===0?.016:Math.min(t-lastTime,.05);
+  lastTime=t; elapsed+=dt;
 
-  // Advance transition
-  if (progress < 1) {
-    if (trStart === null) trStart = t;
-    const dur  = transitionDuration(fromIdx, toIdx);
-    const ease = transitionEase(fromIdx, toIdx);
-    const raw  = clamp((t - trStart) / dur);
-    progress   = ease(raw);
-    if (raw >= 1) progress = 1;
+  if (progress<1) {
+    if (!trStart) trStart=t;
+    const raw=clamp((t-trStart)/trDur(fromIdx,toIdx));
+    progress=trEase(fromIdx)(raw);
+    if (raw>=1) progress=1;
   }
 
-  // Compute particles
-  let particles;
-  if (progress >= 1) {
-    particles = STATES[toIdx].fn(elapsed);
-  } else {
-    particles = blend(STATES[fromIdx].fn(elapsed), STATES[toIdx].fn(elapsed), progress);
-  }
+  let particles = progress>=1
+    ? STATES[toIdx].fn(elapsed)
+    : blend(STATES[fromIdx].fn(elapsed), STATES[toIdx].fn(elapsed), progress);
 
-  // Render (fixed circle per fib index, reorder for depth)
   particles.forEach(p => {
-    const el = circles[p.idx];
-    el.setAttribute("cx", p.sx);
-    el.setAttribute("cy", p.sy);
-    el.setAttribute("r",  p.r);
-    el.setAttribute("fill", rgbStr(p.rgb));
-    el.setAttribute("opacity", p.opacity < .005 ? 0 : p.opacity);
-    el._d = p.depth;
+    const el=circles[p.idx];
+    el.setAttribute("cx",p.sx); el.setAttribute("cy",p.sy);
+    el.setAttribute("r",p.r);   el.setAttribute("fill",rgbStr(p.rgb));
+    el.setAttribute("opacity",p.opacity<.005?0:p.opacity);
+    el._d=p.depth;
   });
-  [...circles].sort((a, b) => a._d - b._d).forEach(el => svg.appendChild(el));
+  [...circles].sort((a,b) => a._d-b._d).forEach(el => svg.appendChild(el));
 
   requestAnimationFrame(frame);
 }
-
 requestAnimationFrame(frame);
 </script>
 </body>
