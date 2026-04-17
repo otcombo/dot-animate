@@ -166,14 +166,13 @@ function stateHelix(time) {
   });
 }
 
-// 7 ── NOVA: sphere ⟷ N-point star morph + sweeping band ─────────
-//     Per-direction radial scale: dots whose longitude lines up with a
-//     spike push outward; those in a valley pull inward. When the pulse
-//     crosses zero, spikes & valleys swap, so the extreme shape cycles
-//     between two *rotated* stars instead of a boring bigger/smaller
-//     sphere. At pulse=0 the shape is a plain sphere.
-//
-//     scale = 1 + sin(t·pFreq) · pRange · cos(spikes·lon + t·starRot)
+// 7 ── NOVA: sphere ⟷ star (expand) ⟷ small ball (shrink) ────────
+//     Asymmetric pulse:
+//       pulse > 0  → star deformation (spikes outward, valleys inward)
+//       pulse < 0  → uniform contraction (everything shrinks together)
+//     so the cycle is: sphere → expanded star → sphere → small ball →
+//     sphere. The shrink side is amplified (×1.6) so it clearly looks
+//     smaller than the star expansion, per user request.
 function stateNova(time) {
   const ro=$('nova','rot'), ti=$('nova','tilt');
   const pf=$('nova','pFreq'), pr=$('nova','pRange');
@@ -185,7 +184,11 @@ function stateNova(time) {
   return PTS.map((pt, idx) => {
     const lon = Math.atan2(pt.z, pt.x);
     const spike = Math.cos(sp * lon + time * sr);              // −1 → +1
-    const scale = 1 + pulse * pr * spike;
+    // Positive half → spike out / valley in (star)
+    // Negative half → uniform shrink (1.6× deeper than the star amplitude)
+    const scale = pulse > 0
+      ? 1 + pulse * pr * spike
+      : 1 + pulse * pr * 1.6;
     const c = rot({ x: pt.x*scale, y: pt.y*scale, z: pt.z*scale },
                   cY, sY, cX, sX);
     const d = clamp((c.z + 1) / 2);
