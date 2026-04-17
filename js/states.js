@@ -166,28 +166,35 @@ function stateHelix(time) {
   });
 }
 
-// 7 ── NOVA: cascading radial pulse + sweeping band ────────────────
+// 7 ── NOVA: sphere ⟷ N-point star morph + sweeping band ─────────
+//     Per-direction radial scale: dots whose longitude lines up with a
+//     spike push outward; those in a valley pull inward. When the pulse
+//     crosses zero, spikes & valleys swap, so the extreme shape cycles
+//     between two *rotated* stars instead of a boring bigger/smaller
+//     sphere. At pulse=0 the shape is a plain sphere.
+//
+//     scale = 1 + sin(t·pFreq) · pRange · cos(spikes·lon + t·starRot)
 function stateNova(time) {
-  const ro=$('nova','rot'), ti=$('nova','tilt'), pf=$('nova','pFreq'), pr=$('nova','pRange');
+  const ro=$('nova','rot'), ti=$('nova','tilt');
+  const pf=$('nova','pFreq'), pr=$('nova','pRange');
+  const sp=$('nova','spikes'), sr=$('nova','starRot');
   const bs=$('nova','bSpd'), bw=$('nova','bW');
   const a = time * ro, cY = Math.cos(a), sY = Math.sin(a);
   const cX = Math.cos(ti), sX = Math.sin(ti);
+  const pulse = Math.sin(time * pf);                           // −1 → +1
   return PTS.map((pt, idx) => {
     const lon = Math.atan2(pt.z, pt.x);
-    const delay = lon * .4 + pt.y * .7;
-    const pulse = Math.sin(time * pf + delay);
-    const scale = (.65 + pr) + pr * pulse;
-    // Depth stays pure orientation — NOT scaled by `scale` — so dots keep
-    // their size variety (front = big, back = small) whether the sphere is
-    // expanded or contracted. Previously (c.z * scale) collapsed all dots
-    // toward mid-depth when the sphere shrank, making them uniformly small.
-    const c = rot(pt, cY, sY, cX, sX), d = clamp((c.z + 1) / 2);
-    const bandY = Math.sin(time * bs);
+    const spike = Math.cos(sp * lon + time * sr);              // −1 → +1
+    const scale = 1 + pulse * pr * spike;
+    const c = rot({ x: pt.x*scale, y: pt.y*scale, z: pt.z*scale },
+                  cY, sY, cX, sX);
+    const d = clamp((c.z + 1) / 2);
+    const bandY   = Math.sin(time * bs);
     const bandDist = Math.abs(pt.y - bandY);
     const hi = bandDist < bw ? (1 - bandDist / bw) ** 1.5 : 0;
-    const r = .95 * (.2 + .6 * d) * (1 + .65 * hi);
-    const op = ((.2 + .8 * d) + .45 * hi) * .9;
-    return { sx: 9.5 * scale * c.x + CX, sy: 9.5 * scale * c.y + CY, depth: d,
+    const r  = .95 * (.4 + .5 * d) * (1 + .65 * hi);
+    const op = ((.2 + .8 * d) + .2 * hi) * .9;
+    return { sx: 9.5 * c.x + CX, sy: 9.5 * c.y + CY, depth: d,
              r: Math.max(.4, r), opacity: clamp(op), rgb: bRGB(d, hi), idx };
   });
 }
