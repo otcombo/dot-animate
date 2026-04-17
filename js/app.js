@@ -121,6 +121,24 @@ function buildGlobalSection() {
     presets.appendChild(b);
   });
   globalEl.appendChild(presets);
+
+  // Reset globals (numeric + colors)
+  const acts = document.createElement('div');
+  acts.className = 'panel-actions';
+  acts.innerHTML = '<button data-a="reset">Reset globals</button>';
+  acts.addEventListener('click', e => {
+    if (e.target.dataset.a !== 'reset') return;
+    PARAM_DEFS.global.forEach(p => {
+      CFG['global.' + p.key] = p.default;
+    });
+    CFG['color.front'] = '#FFFFFF';
+    CFG['color.mid']   = '#888888';
+    CFG['color.back']  = '#333333';
+    applyPalette();
+    buildGlobalSection();   // rebuild to refresh slider + color-picker values
+    persistCFG();
+  });
+  globalEl.appendChild(acts);
 }
 
 // State section: rebuilt every time a different state is selected.

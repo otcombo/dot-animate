@@ -139,8 +139,9 @@ function stateHelix(time) {
     const pT = ((time * ps + strand * .5) % 1);
     const dist = Math.abs(t - pT), wrap = Math.min(dist, 1 - dist);
     const hi = wrap < pw ? (1 - wrap / pw) ** 2 : 0;
-    const r = Math.max(.3, (.28 + .22 * d) * (1 + 1.2 * hi));
-    const op = clamp((.15 + .5 * d) + .55 * hi);
+    // Size formula matches thinking: .95*(.4+.6*d), min 0.4
+    const r = Math.max(.4, .95 * (.4 + .6 * d) * (1 + .9 * hi));
+    const op = clamp((.2 + .8 * d) * .9 + .6 * hi);
     return { sx: x * rx + CX, sy: y * ry + CY, depth: d,
              r, opacity: op, rgb: cRGB(d, hi), idx };
   });
@@ -186,8 +187,8 @@ function stateKnot(time) {
     const pT = (time * ps) % 1;
     const dist = Math.abs(idx / N - pT), wrap = Math.min(dist, 1 - dist);
     const hi = wrap < pw ? (1 - wrap / pw) ** 2 : 0;
-    const r = Math.max(.3, (.28 + .22 * d) * (1 + 1.2 * hi));
-    const op = clamp((.15 + .5 * d) + .55 * hi);
+    const r = Math.max(.4, .95 * (.4 + .6 * d) * (1 + .9 * hi));
+    const op = clamp((.2 + .8 * d) * .9 + .6 * hi);
     return { sx: x * sc + CX, sy: y * sc + CY, depth: d,
              r, opacity: op, rgb: cRGB(d, hi), idx };
   });
@@ -232,8 +233,10 @@ function statePendulum(time) {
     const d = clamp((z + 1) / 2);
     const bandX = Math.sin(time * bs), bDist = Math.abs(x - bandX);
     const hi = bDist < bw ? (1 - bDist / bw) : 0;
-    const r = Math.max(.28, .28 + .2 * d + .35 * hi);
-    const op = clamp(.2 + .45 * d + .5 * hi);
+    // Pendulum: slightly smaller max than thinking since 40 dots are packed
+    // into a horizontal row, but still close to thinking's visual weight.
+    const r = Math.max(.38, .85 * (.4 + .6 * d) * (1 + .6 * hi));
+    const op = clamp((.2 + .8 * d) * .9 + .5 * hi);
     return { sx: x * 9 + CX, sy: y * 7.5 + CY, depth: d,
              r, opacity: op, rgb: cRGB(d, hi), idx };
   });
@@ -301,8 +304,8 @@ function stateFigure8(time) {
     const pT = (time * ps) % 1;
     const dist = Math.abs(idx / N - pT), wrap = Math.min(dist, 1 - dist);
     const hi = wrap < pw ? (1 - wrap / pw) ** 2 : 0;
-    const r = Math.max(.3, (.28 + .22 * d) * (1 + 1.2 * hi));
-    const op = clamp((.15 + .5 * d) + .55 * hi);
+    const r = Math.max(.4, .95 * (.4 + .6 * d) * (1 + .9 * hi));
+    const op = clamp((.2 + .8 * d) * .9 + .6 * hi);
     return { sx: x * 9 + CX, sy: y * 9 + CY, depth: d,
              r, opacity: op, rgb: cRGB(d, hi), idx };
   });

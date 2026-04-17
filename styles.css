@@ -55,7 +55,7 @@ body {
 
 /* ── Parameter panel ────────────────────────────────────────────── */
 #panel {
-  width: 440px; max-width: 95vw;
+  width: fit-content; max-width: 95vw;
   background: #131313; border: 1px solid #1e1e1e;
   border-radius: 14px; padding: 14px 16px 12px;
   margin-top: 2px;
