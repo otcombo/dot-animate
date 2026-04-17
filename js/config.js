@@ -172,9 +172,9 @@ for (const [state, params] of Object.entries(PARAM_DEFS)) {
 }
 
 // Color palette stored as hex strings (separate from numeric params)
-CFG['color.front'] = '#FFFFFF';
-CFG['color.mid']   = '#888888';
-CFG['color.back']  = '#333333';
+CFG['color.front'] = '#FFE5B3';
+CFG['color.mid']   = '#BE8E2D';
+CFG['color.back']  = '#593912';
 
 // Restore user's previous tweaks from localStorage
 try {

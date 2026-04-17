@@ -199,9 +199,9 @@ function buildActionSection() {
   acts.className = 'panel-actions';
   acts.innerHTML =
     '<button data-a="reset">Reset</button>' +
+    '<button data-a="import">Import</button>' + 
     '<span class="spacer"></span>' +
-    '<button data-a="export">Export</button>' +
-    '<button data-a="import">Import</button>';
+    '<button data-a="export">Export</button>'; 
   acts.addEventListener('click', onPanelAction);
   actionEl.appendChild(acts);
 }
@@ -215,9 +215,9 @@ function onPanelAction(e) {
     PARAM_DEFS.global.forEach(p => {
       CFG['global.' + p.key] = p.default;
     });
-    CFG['color.front'] = '#FFFFFF';
-    CFG['color.mid']   = '#888888';
-    CFG['color.back']  = '#333333';
+    CFG['color.front'] = '#FFE5B3';
+    CFG['color.mid']   = '#BE8E2D';
+    CFG['color.back']  = '#593912';
     applyPalette();
 
     (PARAM_DEFS[activeStateName] || []).forEach(p => {

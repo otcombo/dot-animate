@@ -185,7 +185,7 @@ function stateNova(time) {
     const bandY = Math.sin(time * bs);
     const bandDist = Math.abs(pt.y - bandY);
     const hi = bandDist < bw ? (1 - bandDist / bw) ** 1.5 : 0;
-    const r = .95 * (.4 + .6 * d) * (1 + .65 * hi);
+    const r = .95 * (.2 + .6 * d) * (1 + .65 * hi);
     const op = ((.2 + .8 * d) + .45 * hi) * .9;
     return { sx: 9.5 * scale * c.x + CX, sy: 9.5 * scale * c.y + CY, depth: d,
              r: Math.max(.4, r), opacity: clamp(op), rgb: bRGB(d, hi), idx };

@@ -11,9 +11,9 @@ const N = 40;                           // particle count
 const CX = 11, CY = 11;                 // SVG viewBox center
 
 // ── Mutable palette (updated by applyPalette in config.js) ───────────
-const RGB_F = [255, 255, 255];          // front / brightest
-const RGB_M = [136, 136, 136];          // mid
-const RGB_B = [51, 51, 51];             // back / dimmest
+const RGB_F = [255, 229, 179];          // #FFE5B3 — front / brightest
+const RGB_M = [190, 142, 45];           // #BE8E2D — mid
+const RGB_B = [89, 57, 18];             // #593912 — back / dimmest
 
 // ── Fibonacci sphere: 40 evenly distributed points on a unit sphere ──
 const PTS = Array.from({ length: N }, (_, i) => {

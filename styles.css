@@ -7,9 +7,9 @@
 :root {
   --bg-page: #000000;
   --bg-hover: #1f1f1f;
-  --bg-surface: #131313;
-  --bg-btn: #1a1a1a;
-  --bg-btn-alt: #161616;
+  --bg-surface: #0b0b0b;
+  --bg-btn: #0b0b0b;
+  --bg-btn-alt: #1a1a1a;
   --text-primary: #ababab;
   --text-secondary: #696969;
   --text-muted: #646464;
@@ -39,6 +39,7 @@ body {
 .app-shell {
   width: min(640px, 95vw);
   height: 90vh;
+  max-height: 1000px;
   display: grid;
   grid-template-rows: 1fr auto auto;
   gap: 14px;
@@ -112,7 +113,7 @@ body {
 .panel-group { width: 100%; min-width: 0; }
 .panel-group + .panel-group {
   padding-top: var(--space-group);
-  border-top: 1px solid #1e1e1e;
+  border-top: 1px solid #141414;
 }
 .param-grid {
   display: grid; grid-template-columns: 1fr 1fr;
