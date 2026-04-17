@@ -155,22 +155,73 @@
 
 ---
 
-### 8. firefly — 萤火虫
+### 8. knot — 三叶结
 
 | Property | Value |
 |----------|-------|
-| Motion | Pseudo-random organic drift |
-| Shape | Loose cloud (no rigid structure) |
-| Highlight | Per-dot twinkling + sweeping searchlight glow |
+| Motion | Rotation @ 0.45 rad/s around Y, tilt 0.35 rad |
+| Shape | Trefoil knot curve (topology) |
+| Highlight | Traveling pulse along the knot |
 
-**Concept**: Fireflies in a jar with a soft searchlight sweeping through the cloud. Each dot drifts on its own path, twinkles independently, and brightens when the searchlight passes nearby.
+**Concept**: A trefoil knot — the simplest non-trivial mathematical knot. 40 dots trace the curve, the whole structure rotates in 3D. A bright pulse runs along the knot path.
 
 **Math**:
-- Seed: `idx × φ` (golden ratio for maximum variety)
-- Drift: sum of 2 sine waves per axis at irrational frequency ratios
-- Twinkle: per-dot speed `1.5 + sin(seed×7.1)×0.8`, flash at threshold > 0.82
-- **Searchlight**: center at `(sin(t×0.55)×0.75, cos(t×0.38)×0.75)`, radius 0.65, power falloff 0.8
-- `hi = max(flash, glow)` — either trigger brightens the dot
+- Trefoil parametric: `x = (sin θ + 2 sin 2θ)/3`, `y = (cos θ − 2 cos 2θ)/3`, `z = −sin 3θ / 1.5`
+- θ = idx/40 × 2π — evenly distributed along curve
+- **Band**: traveling pulse at `(time × 0.3) mod 1`, wrap-around distance, quadratic falloff within 0.09 of parameter space
+
+---
+
+### 9. torus — 环面
+
+| Property | Value |
+|----------|-------|
+| Motion | Rotation @ 0.55 rad/s, tilt 0.55 rad |
+| Shape | Torus surface (R=0.65, r=0.28) |
+| Highlight | Bright ring circling the tube cross-section |
+
+**Concept**: A mathematical torus (donut). Different topology from the sphere — genus 1 surface. 40 dots distributed as 10 around the ring × 4 around the tube. A bright band circles the tube.
+
+**Math**:
+- Parametric torus: `x = (R + r cos v) cos u`, `y = (R + r cos v) sin u`, `z = r sin v`
+- u = idx%10/10 × 2π (ring position), v = floor(idx/10)/4 × 2π (tube position)
+- **Band**: reference v angle at `time × 1.8`, shortest arc distance via `atan2`, quadratic falloff within 0.8 rad
+
+---
+
+### 10. pendulum — 波摆
+
+| Property | Value |
+|----------|-------|
+| Motion | Each dot swings at incrementally different frequency |
+| Shape | Horizontal array, vertical oscillation |
+| Highlight | Glow at swing extremes (mathematical turning points) |
+
+**Concept**: The classic wave pendulum — 40 pendulums in a row, each with slightly higher frequency. They periodically align into waves, scatter, then realign. A direct visualization of harmonic analysis.
+
+**Math**:
+- Frequency gradient: `ω_i = 0.5 + i × 0.032` Hz (0.50 → 1.75 Hz)
+- Position: `x = 2i/39 − 1` (horizontal), `y = sin(ω_i × 2πt) × 0.78` (vertical swing)
+- Depth: `z = cos(ω_i × 2πt) × 0.45` — each pendulum traces an ellipse in y-z plane
+- **Band**: `|sin(phase)|` > 0.86 — dots glow at turning points where velocity = 0
+
+---
+
+### 11. split — 双星
+
+| Property | Value |
+|----------|-------|
+| Motion | Two 20-point spheres orbiting shared center, counter-rotating |
+| Shape | Binary system (2-body orbit) |
+| Highlight | Horizontal wave band across both spheres |
+
+**Concept**: Binary star system / cell mitosis. The original sphere splits into two smaller counter-rotating spheres orbiting each other in an elliptical path. Each sub-sphere has its own 20-point fibonacci distribution.
+
+**Math**:
+- Orbit: center offset `(cos(t×0.6)×0.45, sin(t×0.6)×0.25)`, mirrored for each sphere
+- Sub-sphere: fresh 20-point fibonacci sphere, each spinning at `t × 1.5` (CW) and `t × −1.05` (CCW)
+- Tilt ±0.3 rad per sphere for visual separation
+- **Band**: `|y − sin(t×1.5)×0.35|`, power falloff 1.5 within 0.18
 
 ---
 
@@ -201,9 +252,9 @@ All transitions interpolate per-particle: position, size, opacity, and color are
 - **flock** — boids: dots follow flocking rules (separation, alignment, cohesion)
 - **morph** — shape shift: dots rearrange into geometric solids (cube, tetrahedron, octahedron)
 - **rain** — cascade: dots fall from top with staggered timing, reform at top
-- **wave-2d** — surface wave: XY plane standing wave pattern, no sphere structure
-- **split** — mitosis: sphere splits into two smaller spheres that orbit each other
 - **magnetic** — field lines: dots trace paths along a dipole magnetic field
-- **chain** — Lissajous whip: dots form a single 3D curve with traveling pulse
-- **galaxy** — flattened disc with Keplerian rotation (tried, too sparse with 40 dots — needs 80+)
-- **pendulum** — wave pendulum: each dot swings at slightly different frequency, creating phase patterns
+- **lorenz** — Lorenz attractor: dots trace the butterfly-shaped strange attractor (chaos theory)
+- **mobius** — Möbius strip: dots on a non-orientable surface
+- **fourier** — epicycloids: dots trace Fourier series as nested rotating circles (spirograph)
+- ~~galaxy~~ — tried, 40 dots too sparse for a disc. Needs 80+
+- ~~firefly~~ — replaced by knot. Too similar to ripple in visual result
