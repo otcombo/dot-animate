@@ -170,9 +170,10 @@ function stateHelix(time) {
 //     Asymmetric pulse:
 //       pulse > 0  → star deformation (spikes outward, valleys inward)
 //       pulse < 0  → uniform contraction (everything shrinks together)
-//     so the cycle is: sphere → expanded star → sphere → small ball →
-//     sphere. The shrink side is amplified (×1.6) so it clearly looks
-//     smaller than the star expansion, per user request.
+//     Cycle: sphere → expanded star → sphere → small ball → sphere.
+//     Pulse curve is easeOutBack per half-cycle (fast transition +
+//     brief overshoot past the target then settle) — "bouncy" feel
+//     instead of smooth sine.
 function stateNova(time) {
   const ro=$('nova','rot'), ti=$('nova','tilt');
   const pf=$('nova','pFreq'), pr=$('nova','pRange');
@@ -180,7 +181,18 @@ function stateNova(time) {
   const bs=$('nova','bSpd'), bw=$('nova','bW');
   const a = time * ro, cY = Math.cos(a), sY = Math.sin(a);
   const cX = Math.cos(ti), sX = Math.sin(ti);
-  const pulse = Math.sin(time * pf);                           // −1 → +1
+
+  // Bouncy pulse: each half-cycle uses easeOutBack (fast → overshoot → settle)
+  // instead of a smooth sine wave. Alternates direction each half.
+  const period = (2 * PI) / pf;
+  const cT = ((time % period) + period) % period;              // 0 → period
+  const halfT = cT % (period / 2);                              // 0 → period/2
+  const goingDown = cT < period / 2;                            // true: +1 → −1
+  const t01 = halfT / (period / 2);                             // 0 → 1
+  const c1 = 1.4, c3 = c1 + 1;
+  const eob = 1 + c3 * (t01 - 1) ** 3 + c1 * (t01 - 1) ** 2;    // easeOutBack (peaks past 1)
+  const pulse = goingDown ? 1 - 2 * eob : -1 + 2 * eob;         // −1.1 … +1.1 w/ bounce
+
   return PTS.map((pt, idx) => {
     const lon = Math.atan2(pt.z, pt.x);
     const spike = Math.cos(sp * lon + time * sr);              // −1 → +1
@@ -195,7 +207,8 @@ function stateNova(time) {
     const bandY   = Math.sin(time * bs);
     const bandDist = Math.abs(pt.y - bandY);
     const hi = bandDist < bw ? (1 - bandDist / bw) ** 1.5 : 0;
-    const r  = .95 * (.4 + .5 * d) * (1 + .65 * hi);
+    // Dot size also rides on scale (min clamp .45 so shrunk dots stay visible)
+    const r  = .95 * (.4 + .5 * d) * (1 + .65 * hi) * Math.max(.45, scale);
     const op = ((.2 + .8 * d) + .2 * hi) * .9;
     return { sx: 9.5 * c.x + CX, sy: 9.5 * c.y + CY, depth: d,
              r: Math.max(.4, r), opacity: clamp(op), rgb: bRGB(d, hi), idx };
