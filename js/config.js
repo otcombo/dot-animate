@@ -16,13 +16,6 @@ const PARAM_DEFS = {
     { key: 'r2',       label: 'Outer radius',  min: 6,   max: 10,  step: .2,   default: 8 },
     { key: 'depthAmt', label: 'Depth variance',min: 0,   max: .5,  step: .05,  default: 0 },
   ],
-  thinking: [
-    { key: 'spin',     label: 'Spin speed',   min: .2, max: 4,    step: .1,   default: 1.4 },
-    { key: 'tilt',     label: 'Tilt',         min: 0,  max: 1,    step: .05,  default: .2 },
-    { key: 'bandSpd',  label: 'Band speed',   min: .5, max: 5,    step: .1,   default: 2.2 },
-    { key: 'bandW',    label: 'Band width',   min: .1, max: 1.2,  step: .05,  default: .5 },
-    { key: 'bandAmp',  label: 'Band sweep',   min: .2, max: 1,    step: .05,  default: .85 },
-  ],
   pulse: [
     { key: 'rot',      label: 'Rotation',     min: 0,  max: 1.2,  step: .05,  default: .35 },
     { key: 'bAmp',     label: 'Breath amp',   min: 0,  max: .4,   step: .02,  default: .14 },
@@ -103,6 +96,13 @@ const PARAM_DEFS = {
     { key: 'bSpd',     label: 'Band speed',   min: .5,   max: 4,   step: .1,   default: 1.8 },
     { key: 'bRange',   label: 'Band range',   min: .1,   max: .8,  step: .05,  default: .55 },
     { key: 'bW',       label: 'Band width',   min: .1,   max: .6,  step: .05,  default: .3 },
+  ],
+  sphere: [
+    { key: 'spin',     label: 'Spin speed',   min: .2, max: 4,    step: .1,   default: 1.4 },
+    { key: 'tilt',     label: 'Tilt',         min: 0,  max: 1,    step: .05,  default: .2 },
+    { key: 'bandSpd',  label: 'Band speed',   min: .5, max: 5,    step: .1,   default: 2.2 },
+    { key: 'bandW',    label: 'Band width',   min: .1, max: 1.2,  step: .05,  default: .5 },
+    { key: 'bandAmp',  label: 'Band sweep',   min: .2, max: 1,    step: .05,  default: .85 },
   ],
   rain: [
     { key: 'spd',      label: 'Fall speed',   min: .1,   max: 1,   step: .05,  default: .4 },

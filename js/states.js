@@ -11,7 +11,7 @@
 //      16 visible dots arranged as avatar's 4-inner-diamond + 12-outer-
 //      ring. Each dot's depth is derived from its vertical position
 //      (bottom = closer/larger, top = farther/smaller), feeding into
-//      thinking's standard size/opacity/color formulas so dots have
+//      sphere's standard size/opacity/color formulas so dots have
 //      organic size variation even while fully static.
 function stateIdle() {
   const r1      = $('idle','r1');
@@ -29,7 +29,7 @@ function stateIdle() {
     const y = Math.sin(angle) * radius;
     // Pseudo-depth from y-position — top = back (small), bottom = front (big)
     const d = clamp(0.55 + Math.sin(angle) * depthAmt);
-    // Thinking's size/opacity formulas (depth → organic variation)
+    // Sphere's size/opacity formulas (depth → organic variation)
     const r  = Math.max(.35, .95 * (.4 + .6 * d));
     const op = clamp((.3 + .7 * d) * .9);
     return { sx: CX + x, sy: CY + y, depth: d,
@@ -37,10 +37,13 @@ function stateIdle() {
   });
 }
 
-// 1 ── THINKING: Y-spin + horizontal band sweep ─────────────────────
-function stateThinking(time) {
-  const sp=$('thinking','spin'), ti=$('thinking','tilt');
-  const bs=$('thinking','bandSpd'), bw=$('thinking','bandW'), ba=$('thinking','bandAmp');
+// SPHERE: Y-spin + horizontal band sweep ────────────────────────
+//   The "baseline" state — a uniform sphere of dots rotating with
+//   a horizontal light bar sweeping across it. Many other states
+//   use this formula as their size / opacity reference.
+function stateSphere(time) {
+  const sp=$('sphere','spin'), ti=$('sphere','tilt');
+  const bs=$('sphere','bandSpd'), bw=$('sphere','bandW'), ba=$('sphere','bandAmp');
   const a = time * sp, cY = Math.cos(a), sY = Math.sin(a);
   const cX = Math.cos(ti), sX = Math.sin(ti);
   return PTS.map((pt, idx) => {
@@ -155,7 +158,7 @@ function stateHelix(time) {
     const pT = ((time * ps + strand * .5) % 1);
     const dist = Math.abs(t - pT), wrap = Math.min(dist, 1 - dist);
     const hi = wrap < pw ? (1 - wrap / pw) ** 2 : 0;
-    // Size formula matches thinking: .95*(.4+.6*d), min 0.4
+    // Size formula matches sphere: .95*(.4+.6*d), min 0.4
     const r = Math.max(.4, .95 * (.4 + .6 * d) * (1 + .9 * hi));
     const op = clamp((.2 + .8 * d) * .9 + .6 * hi);
     return { sx: x * rx + CX, sy: y * ry + CY, depth: d,
@@ -188,7 +191,7 @@ function stateNova(time) {
 // 8 ── KNOT: trefoil knot + traveling dots + traveling pulse ─────
 //     Math: x=sin θ+2sin 2θ,  y=cos θ−2cos 2θ,  z=−sin 3θ
 //     24 dots on the curve (16 hidden at center) → ~4.9 svg-unit
-//     spacing at scale=9.5, matching thinking. `loop` makes each dot
+//     spacing at scale=9.5, matching sphere. `loop` makes each dot
 //     flow along the curve instead of sitting at a fixed position;
 //     `rot` still tumbles the whole knot in 3D for extra interest.
 const KNOT_N = 24;
@@ -224,7 +227,7 @@ function stateKnot(time) {
 //     30 visible dots in 3 rings of 10 — outer equator, top, bottom.
 //     The inner equator ring (v=π, sitting inside the donut hole)
 //     is omitted so the middle of the shape stays clean.
-//     Band: thinking-style horizontal bar that sweeps L→R in screen
+//     Band: sphere-style horizontal bar that sweeps L→R in screen
 //     space (instead of cycling ring-by-ring).
 const TORUS_V_ROWS = [0, PI / 2, 3 * PI / 2];   // outer, top, bottom
 function stateTorus(time) {
@@ -247,7 +250,7 @@ function stateTorus(time) {
     const ct = Math.cos(ti), st = Math.sin(ti);
     let ny = y * ct - z * st; nz = y * st + z * ct; y = ny; z = nz;
     const d = clamp((z / .95 + 1) / 2);
-    // Horizontal sweep band (thinking-style): vertical bar oscillating in x
+    // Horizontal sweep band (sphere-style): vertical bar oscillating in x
     const band = Math.abs(x - ba * Math.sin(bs * time));
     const hi = (band < bw && d > .25)
       ? (1 - band / bw) * Math.min(1, (d - .25) / .3)
@@ -539,7 +542,6 @@ function stateAvatar(time) {
 // ── State registry ───────────────────────────────────────────────
 const STATES = [
   { name: 'idle',     fn: stateIdle     },
-  { name: 'thinking', fn: stateThinking },
   { name: 'pulse',    fn: statePulse    },
   { name: 'swirl',    fn: stateSwirl    },
   { name: 'ripple',   fn: stateRipple   },
@@ -550,6 +552,7 @@ const STATES = [
   { name: 'torus',    fn: stateTorus    },
   { name: 'pendulum', fn: statePendulum },
   { name: 'wobble',   fn: stateWobble   },
+  { name: 'sphere',   fn: stateSphere   },
   { name: 'rain',     fn: stateRain     },
   { name: 'infinite', fn: stateInfinite },
   { name: 'grid',     fn: stateGrid     },
