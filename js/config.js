@@ -78,11 +78,12 @@ const PARAM_DEFS = {
   ],
   torus: [
     { key: 'R',        label: 'Major radius', min: .3,  max: 1,   step: .05,  default: .65 },
-    { key: 'r',        label: 'Tube radius',  min: .1,  max: .5,  step: .02,  default: .28 },
+    { key: 'r',        label: 'Tube radius',  min: .1,  max: .6,  step: .02,  default: .45 },
     { key: 'spin',     label: 'Spin speed',   min: .1,  max: 1.5, step: .05,  default: .55 },
     { key: 'tilt',     label: 'Tilt',         min: .1,  max: 1.2, step: .05,  default: .55 },
-    { key: 'bSpd',     label: 'Band speed',   min: .5,  max: 4,   step: .1,   default: 1.8 },
-    { key: 'bW',       label: 'Band width',   min: .2,  max: 2,   step: .1,   default: .8 },
+    { key: 'bSpd',     label: 'Band speed',   min: .5,  max: 5,   step: .1,   default: 2.2 },
+    { key: 'bAmp',     label: 'Band sweep',   min: .2,  max: 1.5, step: .05,  default: .85 },
+    { key: 'bW',       label: 'Band width',   min: .1,  max: 1.2, step: .05,  default: .5 },
   ],
   pendulum: [
     { key: 'base',     label: 'Base freq',    min: .1,   max: .8,  step: .02,  default: .32 },

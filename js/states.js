@@ -210,26 +210,40 @@ function stateKnot(time) {
   });
 }
 
-// 9 ── TORUS: donut surface + tube-circling band ───────────────────
+// 9 ── TORUS: donut surface + horizontal sweep band ────────────────
 //     Math: ((R+r cos v) cos u, (R+r cos v) sin u, r sin v)
+//     30 visible dots in 3 rings of 10 — outer equator, top, bottom.
+//     The inner equator ring (v=π, sitting inside the donut hole)
+//     is omitted so the middle of the shape stays clean.
+//     Band: thinking-style horizontal bar that sweeps L→R in screen
+//     space (instead of cycling ring-by-ring).
+const TORUS_V_ROWS = [0, PI / 2, 3 * PI / 2];   // outer, top, bottom
 function stateTorus(time) {
   const R=$('torus','R'), tr=$('torus','r'), sp=$('torus','spin');
-  const ti=$('torus','tilt'), bs=$('torus','bSpd'), bw=$('torus','bW');
+  const ti=$('torus','tilt'), bs=$('torus','bSpd');
+  const ba=$('torus','bAmp'), bw=$('torus','bW');
   return PTS.map((pt, idx) => {
-    const u = (idx % 10) / 10 * PI * 2;         // 10 around ring
-    const v = Math.floor(idx / 10) / 4 * PI * 2; // 4 around tube
+    if (idx >= 30) {
+      return { sx: CX, sy: CY, depth: 0, r: .2, opacity: 0, rgb: RGB_F, idx };
+    }
+    const u = (idx % 10) / 10 * PI * 2;
+    const v = TORUS_V_ROWS[Math.floor(idx / 10)];
     let x = (R + tr * Math.cos(v)) * Math.cos(u);
     let y = (R + tr * Math.cos(v)) * Math.sin(u);
     let z = tr * Math.sin(v);
+    // Rotate around Y (spin)
     const a = time * sp, c1 = Math.cos(a), s1 = Math.sin(a);
     let nx = x * c1 + z * s1, nz = -x * s1 + z * c1; x = nx; z = nz;
+    // Tilt around X (perspective)
     const ct = Math.cos(ti), st = Math.sin(ti);
     let ny = y * ct - z * st; nz = y * st + z * ct; y = ny; z = nz;
     const d = clamp((z / .95 + 1) / 2);
-    const bv = (time * bs) % (PI * 2);
-    const vd = Math.abs(Math.atan2(Math.sin(v - bv), Math.cos(v - bv)));
-    const hi = vd < bw ? (1 - vd / bw) ** 2 : 0;
-    const r = Math.max(.38, (.42 + .42 * d) * (1 + .6 * hi));
+    // Horizontal sweep band (thinking-style): vertical bar oscillating in x
+    const band = Math.abs(x - ba * Math.sin(bs * time));
+    const hi = (band < bw && d > .25)
+      ? (1 - band / bw) * Math.min(1, (d - .25) / .3)
+      : 0;
+    const r  = Math.max(.38, (.42 + .42 * d) * (1 + .6 * hi));
     const op = clamp((.2 + .7 * d) + .5 * hi);
     return { sx: x * 9.5 + CX, sy: y * 9.5 + CY, depth: d,
              r, opacity: op, rgb: bRGB(d, hi), idx };
