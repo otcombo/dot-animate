@@ -90,6 +90,34 @@
   }
   .panel-actions button:hover { border-color: #74B8D4; color: #aaa; }
   .panel-actions .spacer { flex: 1; }
+
+  /* ── Color section ── */
+  #colorSection {
+    padding-bottom: 10px;
+    border-bottom: 1px solid #1e1e1e;
+    margin-bottom: 10px;
+  }
+  .section-title {
+    font-size: 10px; color: #555;
+    letter-spacing: .05em; text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .color-inputs { display: flex; gap: 14px; margin-bottom: 8px; flex-wrap: wrap; }
+  .c-pr { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #666; }
+  .c-pr input[type=color] {
+    width: 26px; height: 20px;
+    border: 1px solid #2a2a2a; border-radius: 4px;
+    background: none; padding: 0; cursor: pointer;
+  }
+  .color-presets { display: flex; gap: 5px; flex-wrap: wrap; }
+  .color-presets button {
+    background: #1a1a1a; color: #555;
+    border: 1px solid #2a2a2a; border-radius: 6px;
+    padding: 2px 10px; font-size: 10px;
+    font-family: inherit; cursor: pointer;
+    transition: all .2s;
+  }
+  .color-presets button:hover { border-color: #888; color: #aaa; }
 </style>
 </head>
 <body>
@@ -100,7 +128,10 @@
   <svg id="ball" width="52" height="52" viewBox="0 0 22 22"></svg>
 </div>
 <div class="buttons" id="buttons"></div>
-<div id="panel"></div>
+<div id="panel">
+  <div id="globalSection"></div>
+  <div id="stateSection"></div>
+</div>
 
 <script>
 // =====================================================================
@@ -108,7 +139,8 @@
 // =====================================================================
 
 const PI=Math.PI, PHI=PI*(3-Math.sqrt(5)), N=40, CX=11, CY=11;
-const RGB_F=[116,184,212], RGB_M=[60,120,168], RGB_B=[26,40,64];
+// Mutable palette (defaults = white/gray tones, overridden by CFG colors)
+const RGB_F=[255,255,255], RGB_M=[136,136,136], RGB_B=[51,51,51];
 
 // ── Fibonacci sphere ─────────────────────────────────────────────────
 const PTS=Array.from({length:N},(_,i)=>{
@@ -138,16 +170,24 @@ const easeO3=t=>1-(1-t)**3, easeIO3=t=>t<.5?4*t*t*t:1-(-2*t+2)**3/2;
 const rgbStr=c=>`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
 const lerpC=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
 const dRGB=d=>d>.65?RGB_F:d>.4?RGB_M:RGB_B;
-const bRGB=(d,hi)=>hi>.3?lerpC(dRGB(d),RGB_F,hi):dRGB(d);
-const cRGB=(d,hi)=>{const b=d>.5?RGB_M:RGB_B;return hi>.15?lerpC(b,RGB_F,hi):b;}; // curve states
+// `hi` is band intensity [0,1]; global bandGlow multiplier amplifies contrast
+const bRGB=(d,hi)=>{const h=Math.min(1,hi*(CFG['global.bandGlow']||1));return h>.3?lerpC(dRGB(d),RGB_F,h):dRGB(d);};
+const cRGB=(d,hi)=>{const h=Math.min(1,hi*(CFG['global.bandGlow']||1));const b=d>.5?RGB_M:RGB_B;return h>.15?lerpC(b,RGB_F,h):b;};
 
 // =====================================================================
 //  PARAMETER DEFINITIONS — { key, label, min, max, step, default }
 // =====================================================================
 const PARAM_DEFS={
+global:[
+  {key:'scale',   label:'Scale',       min:.3,max:1.5,step:.05,default:1},
+  {key:'dotSize', label:'Dot size',    min:.3,max:2,  step:.05,default:1},
+  {key:'opacity', label:'Opacity',     min:.3,max:1.2,step:.05,default:1},
+  {key:'bandGlow',label:'Band glow',   min:0, max:2,  step:.05,default:1},
+],
 idle:[
   {key:'dotR',    label:'Dot radius',  min:.2,max:1.2,step:.05,default:.62},
   {key:'dotOp',   label:'Dot opacity', min:.2,max:1,  step:.05,default:.88},
+  {key:'gridSp',  label:'Grid spacing',min:1.8,max:3.8,step:.1, default:2.8},
 ],
 thinking:[
   {key:'spin',    label:'Spin speed',  min:.2,max:4,  step:.1, default:1.4},
@@ -251,6 +291,11 @@ const CFG={};
 for(const[st,ps]of Object.entries(PARAM_DEFS))
   for(const p of ps) CFG[st+'.'+p.key]=p.default;
 
+// Color palette (separate from numeric params, stored as hex strings)
+CFG['color.front']='#FFFFFF';
+CFG['color.mid']  ='#888888';
+CFG['color.back'] ='#333333';
+
 // Restore from localStorage
 try{const s=JSON.parse(localStorage.getItem('dotanim_cfg'));if(s)Object.assign(CFG,s);}catch(e){}
 
@@ -259,15 +304,39 @@ const $=(st,k)=>CFG[st+'.'+k];
 let _saveT;
 function persistCFG(){clearTimeout(_saveT);_saveT=setTimeout(()=>localStorage.setItem('dotanim_cfg',JSON.stringify(CFG)),300);}
 
+// ── Palette helpers ──────────────────────────────────────────────────
+function hexToRGB(h){return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+function applyPalette(){
+  const f=hexToRGB(CFG['color.front']),m=hexToRGB(CFG['color.mid']),b=hexToRGB(CFG['color.back']);
+  RGB_F[0]=f[0];RGB_F[1]=f[1];RGB_F[2]=f[2];
+  RGB_M[0]=m[0];RGB_M[1]=m[1];RGB_M[2]=m[2];
+  RGB_B[0]=b[0];RGB_B[1]=b[1];RGB_B[2]=b[2];
+}
+applyPalette();
+
+const COLOR_PRESETS={
+  white:['#FFFFFF','#888888','#333333'],
+  blue: ['#74B8D4','#3C78A8','#1A2840'],
+  red:  ['#FF8A8A','#CC5555','#5A2020'],
+  green:['#7AD49F','#3CA86A','#1A4028'],
+  purple:['#BC90DC','#7A50B0','#3A2060'],
+  amber:['#FFD580','#C89A3C','#5C3E1A'],
+  mono: ['#E0E0E0','#707070','#2A2A2A'],
+};
+
 // =====================================================================
 //  14 PARAMETERIZED STATE FUNCTIONS
 // =====================================================================
 
 function stateIdle(){
-  const dr=$('idle','dotR'),dop=$('idle','dotOp');
+  const dr=$('idle','dotR'),dop=$('idle','dotOp'),sp=$('idle','gridSp');
+  const sf=sp/2.8;  // rescale factor (original GRID built with SP=2.8)
   return PTS.map((_,idx)=>{
     const s=slot[idx];
-    if(s>=0){const g=GRID[s];return{sx:g.x,sy:g.y,depth:.8,r:dr,opacity:dop,rgb:RGB_F,idx};}
+    if(s>=0){
+      const g=GRID[s];
+      return{sx:CX+(g.x-CX)*sf,sy:CY+(g.y-CY)*sf,depth:.8,r:dr,opacity:dop,rgb:RGB_F,idx};
+    }
     return{sx:CX,sy:CY,depth:0,r:.2,opacity:0,rgb:RGB_F,idx};
   });
 }
@@ -508,7 +577,8 @@ const svg=document.getElementById("ball"),
       labelEl=document.getElementById("label"),
       navEl=document.getElementById("nav"),
       btnsEl=document.getElementById("buttons"),
-      panelEl=document.getElementById("panel"),
+      globalEl=document.getElementById("globalSection"),
+      stateEl=document.getElementById("stateSection"),
       ns="http://www.w3.org/2000/svg";
 
 const circles=PTS.map(()=>{const el=document.createElementNS(ns,"circle");svg.appendChild(el);return el;});
@@ -520,11 +590,9 @@ const btns=STATES.map((st,i)=>{
   btnsEl.appendChild(b);return b;
 });
 
-// ── Parameter Panel ──────────────────────────────────────────────────
-function buildPanel(stateName){
-  panelEl.innerHTML='';
+// ── Helper: build a grid of sliders for a state ─────────────────────
+function renderSliders(parent,stateName){
   const defs=PARAM_DEFS[stateName];
-  if(!defs||!defs.length){panelEl.innerHTML='<div style="color:#444;text-align:center;padding:4px">No parameters</div>';return;}
   const grid=document.createElement('div');grid.className='param-grid';
   defs.forEach(p=>{
     const k=stateName+'.'+p.key;
@@ -535,19 +603,68 @@ function buildPanel(stateName){
     sl.addEventListener('input',()=>{CFG[k]=parseFloat(sl.value);val.textContent=Number(CFG[k]).toFixed(2);persistCFG();});
     row.append(lbl,sl,val);grid.appendChild(row);
   });
-  panelEl.appendChild(grid);
+  parent.appendChild(grid);
+}
+
+// ── Global section: always visible, numeric sliders + colors ────────
+function buildGlobalSection(){
+  globalEl.innerHTML='';
+  const title=document.createElement('div');title.className='section-title';title.textContent='GLOBAL';
+  globalEl.appendChild(title);
+  renderSliders(globalEl,'global');
+  // Color inputs
+  const colorRow=document.createElement('div');colorRow.className='color-inputs';
+  colorRow.style.marginTop='8px';
+  [['Front','color.front'],['Mid','color.mid'],['Back','color.back']].forEach(([lbl,k])=>{
+    const wrap=document.createElement('div');wrap.className='c-pr';
+    const l=document.createElement('span');l.textContent=lbl;
+    const ci=document.createElement('input');ci.type='color';ci.value=CFG[k];
+    ci.addEventListener('input',()=>{CFG[k]=ci.value;applyPalette();persistCFG();});
+    ci.dataset.key=k;wrap.append(l,ci);colorRow.appendChild(wrap);
+  });
+  globalEl.appendChild(colorRow);
+  // Color presets
+  const presets=document.createElement('div');presets.className='color-presets';
+  Object.entries(COLOR_PRESETS).forEach(([name,cs])=>{
+    const b=document.createElement('button');b.textContent=name;
+    b.addEventListener('click',()=>{
+      CFG['color.front']=cs[0];CFG['color.mid']=cs[1];CFG['color.back']=cs[2];
+      applyPalette();persistCFG();
+      // refresh color picker values
+      colorRow.querySelectorAll('input[type=color]').forEach(ci=>ci.value=CFG[ci.dataset.key]);
+    });
+    presets.appendChild(b);
+  });
+  globalEl.appendChild(presets);
+}
+
+// ── State section: rebuilt on state change ──────────────────────────
+function buildStateSection(stateName){
+  stateEl.innerHTML='';
+  if(stateName==='global')return;  // already handled above
+  const title=document.createElement('div');title.className='section-title';
+  title.textContent=stateName.toUpperCase()+' PARAMETERS';
+  title.style.marginTop='12px';title.style.paddingTop='10px';title.style.borderTop='1px solid #1e1e1e';
+  stateEl.appendChild(title);
+  const defs=PARAM_DEFS[stateName];
+  if(!defs||!defs.length){
+    const n=document.createElement('div');n.style.cssText='color:#444;text-align:center;padding:6px';n.textContent='No parameters for this state';
+    stateEl.appendChild(n);
+  }else{
+    renderSliders(stateEl,stateName);
+  }
   // Actions
   const acts=document.createElement('div');acts.className='panel-actions';
-  acts.innerHTML='<button data-a="reset">Reset</button><button data-a="save">Save preset</button><button data-a="load">Load preset</button><span class="spacer"></span><button data-a="export">Export JSON</button><button data-a="import">Import JSON</button>';
+  acts.innerHTML='<button data-a="reset">Reset</button><button data-a="save">Save preset</button><button data-a="load">Load preset</button><span class="spacer"></span><button data-a="export">Export all</button><button data-a="import">Import</button>';
   acts.addEventListener('click',e=>{
     const a=e.target.dataset.a;if(!a)return;
-    if(a==='reset'){PARAM_DEFS[stateName].forEach(p=>{CFG[stateName+'.'+p.key]=p.default;});buildPanel(stateName);persistCFG();}
+    if(a==='reset'){(PARAM_DEFS[stateName]||[]).forEach(p=>{CFG[stateName+'.'+p.key]=p.default;});buildStateSection(stateName);persistCFG();}
     if(a==='save'){const n=prompt('Preset name:');if(!n)return;const ps=JSON.parse(localStorage.getItem('dotanim_presets')||'{}');const sub={};Object.keys(CFG).forEach(k=>{if(k.startsWith(stateName+'.'))sub[k]=CFG[k];});ps[stateName+'/'+n]=sub;localStorage.setItem('dotanim_presets',JSON.stringify(ps));alert('Saved: '+n);}
-    if(a==='load'){const ps=JSON.parse(localStorage.getItem('dotanim_presets')||'{}');const names=Object.keys(ps).filter(n=>n.startsWith(stateName+'/')).map(n=>n.split('/')[1]);if(!names.length){alert('No presets for '+stateName);return;}const n=prompt('Load preset:\n'+names.join(', '));if(n&&ps[stateName+'/'+n]){Object.assign(CFG,ps[stateName+'/'+n]);buildPanel(stateName);persistCFG();}}
-    if(a==='export'){navigator.clipboard.writeText(JSON.stringify(CFG,null,2)).then(()=>alert('Copied to clipboard'));}
-    if(a==='import'){const txt=prompt('Paste JSON config:');if(!txt)return;try{Object.assign(CFG,JSON.parse(txt));buildPanel(stateName);persistCFG();}catch(e){alert('Invalid JSON');}}
+    if(a==='load'){const ps=JSON.parse(localStorage.getItem('dotanim_presets')||'{}');const names=Object.keys(ps).filter(n=>n.startsWith(stateName+'/')).map(n=>n.split('/')[1]);if(!names.length){alert('No presets for '+stateName);return;}const n=prompt('Load preset:\n'+names.join(', '));if(n&&ps[stateName+'/'+n]){Object.assign(CFG,ps[stateName+'/'+n]);buildStateSection(stateName);persistCFG();}}
+    if(a==='export'){navigator.clipboard.writeText(JSON.stringify(CFG,null,2)).then(()=>alert('Copied all config to clipboard'));}
+    if(a==='import'){const txt=prompt('Paste JSON config:');if(!txt)return;try{Object.assign(CFG,JSON.parse(txt));applyPalette();buildGlobalSection();buildStateSection(stateName);persistCFG();}catch(e){alert('Invalid JSON');}}
   });
-  panelEl.appendChild(acts);
+  stateEl.appendChild(acts);
 }
 
 // ── State machine ────────────────────────────────────────────────────
@@ -561,10 +678,11 @@ function switchTo(i){
   labelEl.textContent=STATES[i].name;
   navDots.forEach((d,j)=>d.classList.toggle("on",j===i));
   btns.forEach((b,j)=>b.classList.toggle("on",j===i));
-  buildPanel(STATES[i].name);
+  buildStateSection(STATES[i].name);
 }
 trigger.addEventListener("click",()=>switchTo((toIdx+1)%STATES.length));
-buildPanel('idle');
+buildGlobalSection();
+buildStateSection('idle');
 
 // ── Animation loop ───────────────────────────────────────────────────
 let elapsed=0,lastTime=0;
@@ -580,11 +698,16 @@ function frame(now){
   let particles=progress>=1
     ?STATES[toIdx].fn(elapsed)
     :blend(STATES[fromIdx].fn(elapsed),STATES[toIdx].fn(elapsed),progress);
+  // Global render multipliers
+  const gS=$('global','scale'),gD=$('global','dotSize'),gO=$('global','opacity');
   particles.forEach(p=>{
     const el=circles[p.idx];
-    el.setAttribute("cx",p.sx);el.setAttribute("cy",p.sy);
-    el.setAttribute("r",p.r);el.setAttribute("fill",rgbStr(p.rgb));
-    el.setAttribute("opacity",p.opacity<.005?0:p.opacity);
+    el.setAttribute("cx",CX+(p.sx-CX)*gS);
+    el.setAttribute("cy",CY+(p.sy-CY)*gS);
+    el.setAttribute("r",p.r*gD);
+    el.setAttribute("fill",rgbStr(p.rgb));
+    const op=p.opacity*gO;
+    el.setAttribute("opacity",op<.005?0:op>1?1:op);
     el._d=p.depth;
   });
   [...circles].sort((a,b)=>a._d-b._d).forEach(el=>svg.appendChild(el));
