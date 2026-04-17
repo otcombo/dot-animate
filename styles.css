@@ -12,13 +12,19 @@
   --bg-btn-alt: #161616;
   --text-primary: #ababab;
   --text-secondary: #696969;
-  --text-muted: #555;
+  --text-muted: #646464;
   --text-subtle: #666;
   --border-strong: #1a1a1a;
   --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
   --transition-fast: .2s;
+  --fs-title: 11px;
+  --fs-label: 10px;
+  --fs-value: 11px;
+  --fs-action: 12px;
+  --space-group: 14px;
+  --space-subgroup: 10px;
 }
 
 body {
@@ -38,8 +44,9 @@ body {
   gap: 14px;
   overflow: hidden;
   border: 1px solid var(--border-strong);
-  border-radius: 18px;
+  border-radius: 32px;
   background: rgba(255, 255, 255, 0.01);
+  transition: all var(--transition-fast);
 }
 
 /* ── Ball display ───────────────────────────────────────────────── */
@@ -74,7 +81,7 @@ body {
 .buttons button {
   background: var(--bg-btn-alt); color: var(--text-muted);
   border: 1px solid var(--border-strong); border-radius: var(--radius-lg);
-  padding: 3px 9px; font-size: 11px;
+  padding: 8px 10px; font-size: 11px;
   font-family: 'SF Mono', 'Fira Code', monospace;
   letter-spacing: .03em; cursor: pointer;
   transition: all var(--transition-fast);
@@ -89,10 +96,17 @@ body {
   font-family: 'SF Mono', 'Fira Code', monospace;
   font-size: 11px; color: var(--text-secondary);
   padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-group);
 }
+.panel-group { width: 100%; }
+.panel-group-global { padding-bottom: var(--space-group); border-bottom: 1px solid #1e1e1e; }
+.panel-group-state { padding-bottom: var(--space-subgroup); border-bottom: 1px solid #1e1e1e; }
+.panel-group-actions { margin-top: 0; padding-top: 0; border-top: 0; }
 .param-grid {
   display: grid; grid-template-columns: 1fr 1fr;
-  gap: 8px 20px;
+  gap: 20px 20px;
 }
 @media (max-width: 480px) {
   .param-grid { grid-template-columns: 1fr; }
@@ -101,8 +115,8 @@ body {
 /* ── Slider rows ────────────────────────────────────────────────── */
 .pr { display: flex; align-items: center; gap: 8px; }
 .pr-label {
-  width: 90px; flex-shrink: 0; color: var(--text-muted);
-  font-size: 10px; letter-spacing: .03em;
+  width: 100px; flex-shrink: 0; color: var(--text-muted);
+  font-size: var(--fs-label); letter-spacing: .03em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .pr input[type=range] {
@@ -116,19 +130,18 @@ body {
 }
 .pr-val {
   width: 36px; text-align: right;
-  color: var(--text-primary); font-size: 10px;
+  color: var(--text-primary); font-size: var(--fs-value);
 }
 
 /* ── Panel action buttons (reset/save/load/export) ──────────────── */
 .panel-actions {
   display: flex; gap: 6px; flex-wrap: wrap;
-  margin-top: 10px; padding-top: 8px;
-  border-top: 1px solid #1e1e1e;
+  align-items: center;
 }
 .panel-actions button {
   background: var(--bg-btn); color: var(--text-muted);
   border: 1px solid var(--border-strong); border-radius: var(--radius-md);
-  padding: 3px 10px; font-size: 10px;
+  padding: 8px 16px; font-size: var(--fs-action);
   font-family: inherit; cursor: pointer;
   transition: all var(--transition-fast);
 }
@@ -137,17 +150,21 @@ body {
 
 /* ── Color section (global) ─────────────────────────────────────── */
 .section-title {
-  font-size: 10px; color: var(--text-muted);
+  font-size: var(--fs-title); color: var(--text-muted);
   letter-spacing: .05em; text-transform: uppercase;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-subgroup);
+}
+.section-title-state {
+  margin-bottom: 12px;
 }
 .color-inputs {
   display: flex; gap: 14px;
-  margin-bottom: 8px; flex-wrap: wrap;
+  margin-top: 8px;
+  margin-bottom: 10px; flex-wrap: wrap;
 }
 .c-pr {
   display: flex; align-items: center; gap: 6px;
-  font-size: 10px; color: var(--text-subtle);
+  font-size: var(--fs-label); color: var(--text-subtle);
 }
 .c-pr input[type=color] {
   width: 26px; height: 20px;
@@ -160,7 +177,7 @@ body {
 .color-presets button {
   background: var(--bg-btn); color: var(--text-muted);
   border: 1px solid var(--border-strong); border-radius: 6px;
-  padding: 2px 10px; font-size: 10px;
+  padding: 4px 10px; font-size: var(--fs-label);
   font-family: inherit; cursor: pointer;
   transition: all var(--transition-fast);
 }

@@ -95,10 +95,10 @@ function stateSwirl(time) {
 
 // 4 ── RIPPLE: spherical wave from pole + crest highlight ───────────
 function stateRipple(time) {
-  const ro=$('ripple','rot'), wf=$('ripple','wFreq'), ws=$('ripple','wSpd');
+  const ro=$('ripple','rot'), ti=$('ripple','tilt'), wf=$('ripple','wFreq'), ws=$('ripple','wSpd');
   const wa=$('ripple','wAmp'), cr=$('ripple','crest');
   const a = time * ro, cY = Math.cos(a), sY = Math.sin(a);
-  const cX = Math.cos(.22), sX = Math.sin(.22);
+  const cX = Math.cos(ti), sX = Math.sin(ti);
   return PTS.map((pt, idx) => {
     const dist = Math.acos(Math.max(-1, Math.min(1, pt.y)));
     const wave = Math.sin(dist * wf - time * ws) * wa, sc = 1 + wave;
@@ -116,11 +116,12 @@ function stateRipple(time) {
 // 5 ── ORBIT: 3 orbital rings + comet-trail band ───────────────────
 function stateOrbit(time) {
   const r1=$('orbit','r1'), r2=$('orbit','r2'), r3=$('orbit','r3');
+  const ts=$('orbit','tiltSpread');
   const cm=$('orbit','comet'), cw=$('orbit','cometW');
   const rings = [
-    { tx: .25,  tz: 0,   spd: r1, s: 0,  n: 14 },
-    { tx: 1.15, tz: .55, spd: r2, s: 14, n: 13 },
-    { tx: -.75, tz: -.4, spd: r3, s: 27, n: 13 },
+    { tx: .25*ts,  tz: 0*ts,   spd: r1, s: 0,  n: 14 },
+    { tx: 1.15*ts, tz: .55*ts, spd: r2, s: 14, n: 13 },
+    { tx: -.75*ts, tz: -.4*ts, spd: r3, s: 27, n: 13 },
   ];
   return PTS.map((pt, idx) => {
     const ring = rings.find(r => idx >= r.s && idx < r.s + r.n);
@@ -164,10 +165,10 @@ function stateHelix(time) {
 
 // 7 ── NOVA: cascading radial pulse + sweeping band ────────────────
 function stateNova(time) {
-  const ro=$('nova','rot'), pf=$('nova','pFreq'), pr=$('nova','pRange');
+  const ro=$('nova','rot'), ti=$('nova','tilt'), pf=$('nova','pFreq'), pr=$('nova','pRange');
   const bs=$('nova','bSpd'), bw=$('nova','bW');
   const a = time * ro, cY = Math.cos(a), sY = Math.sin(a);
-  const cX = Math.cos(.2), sX = Math.sin(.2);
+  const cX = Math.cos(ti), sX = Math.sin(ti);
   return PTS.map((pt, idx) => {
     const lon = Math.atan2(pt.z, pt.x);
     const delay = lon * .4 + pt.y * .7;
@@ -239,29 +240,28 @@ function stateTorus(time) {
 //      Math: y_i = A·sin(ω_i·t),  ω_i = ω₀ + i·Δω
 function statePendulum(time) {
   const bf=$('pendulum','base'), fs=$('pendulum','step'), am=$('pendulum','amp');
+  const sY=$('pendulum','spanY'), zA=$('pendulum','zAmt');
   const bs=$('pendulum','bSpd'), bw=$('pendulum','bW');
   return PTS.map((pt, idx) => {
     const freq = bf + idx * fs;
     const phase = time * freq * PI * 2;
     const x = (idx / (N - 1)) * 2 - 1;
-    const swing = Math.sin(phase), y = swing * am, z = Math.cos(phase) * .45;
+    const swing = Math.sin(phase), y = swing * am, z = Math.cos(phase) * zA;
     const d = clamp((z + 1) / 2);
     const bandX = Math.sin(time * bs), bDist = Math.abs(x - bandX);
     const hi = bDist < bw ? (1 - bDist / bw) : 0;
-    // Pendulum: slightly smaller max than thinking since 40 dots are packed
-    // into a horizontal row, but still close to thinking's visual weight.
     const r = Math.max(.38, .85 * (.4 + .6 * d) * (1 + .6 * hi));
     const op = clamp((.2 + .8 * d) * .9 + .5 * hi);
-    return { sx: x * 9 + CX, sy: y * 7.5 + CY, depth: d,
+    return { sx: x * 9 + CX, sy: y * sY + CY, depth: d,
              r, opacity: op, rgb: cRGB(d, hi), idx };
   });
 }
 
 // 11 ── WOBBLE: precessing tumble + sweeping band ──────────────────
 function stateWobble(time) {
-  const sp=$('wobble','spin'), pa=$('wobble','pAmp'), pf=$('wobble','pFreq');
+  const sp=$('wobble','spin'), pa=$('wobble','pAmp'), pf=$('wobble','pFreq'), asym=$('wobble','asym');
   const bs=$('wobble','bSpd'), br=$('wobble','bRange'), bw=$('wobble','bW');
-  const a1 = time * sp, a2 = Math.sin(time * pf) * pa, a3 = Math.cos(time * pf * .77) * pa * .75;
+  const a1 = time * sp, a2 = Math.sin(time * pf) * pa, a3 = Math.cos(time * pf * asym) * pa * .75;
   const c1 = Math.cos(a1), s1 = Math.sin(a1);
   const c2 = Math.cos(a2), s2 = Math.sin(a2);
   const c3 = Math.cos(a3), s3 = Math.sin(a3);
@@ -282,7 +282,7 @@ function stateWobble(time) {
 // 12 ── RAIN: cascading fall + horizontal sweep band ──────────────
 function stateRain(time) {
   const sp=$('rain','spd'), sv=$('rain','var'), dr=$('rain','drift');
-  const bs=$('rain','bSpd'), bw=$('rain','bW');
+  const sY=$('rain','spanY'), bs=$('rain','bSpd'), bw=$('rain','bW');
   return PTS.map((pt, idx) => {
     const s = idx * 1.618;
     const speed = sp + Math.sin(s * 3.7) * sv;
@@ -298,7 +298,7 @@ function stateRain(time) {
     const hi = bDist < bw ? (1 - bDist / bw) : 0;
     const r = Math.max(.38, .42 + .35 * d + .3 * hi);
     const op = clamp(.3 + .45 * d + .35 * hi);
-    return { sx: x * 8.5 + CX, sy: y * 7.5 + CY, depth: d,
+    return { sx: x * 8.5 + CX, sy: y * sY + CY, depth: d,
              r, opacity: op, rgb: bRGB(d, hi), idx };
   });
 }
@@ -307,13 +307,14 @@ function stateRain(time) {
 //      Math: x=sin θ, y=sin 2θ/2 — Lissajous 1:2 figure
 function stateFigure8(time) {
   const lp=$('figure8','loop'), ys=$('figure8','yScale'), zd=$('figure8','zDepth');
-  const ro=$('figure8','rot'), ps=$('figure8','pSpd'), pw=$('figure8','pW');
+  const ro=$('figure8','rot'), ti=$('figure8','tilt'), sc=$('figure8','scale');
+  const ps=$('figure8','pSpd'), pw=$('figure8','pW');
   return PTS.map((pt, idx) => {
     const theta = (idx / N) * PI * 2 + time * lp;
     let x = Math.sin(theta), y = Math.sin(2 * theta) * ys, z = Math.cos(theta) * zd;
     const a = time * ro, c1 = Math.cos(a), s1 = Math.sin(a);
     const rx = x * c1 + z * s1, rz = -x * s1 + z * c1; x = rx; z = rz;
-    const ct = Math.cos(.2), st = Math.sin(.2);
+    const ct = Math.cos(ti), st = Math.sin(ti);
     const ry = y * ct - z * st; z = y * st + z * ct; y = ry;
     const d = clamp((z + 1) / 2);
     const pT = (time * ps) % 1;
@@ -321,7 +322,7 @@ function stateFigure8(time) {
     const hi = wrap < pw ? (1 - wrap / pw) ** 2 : 0;
     const r = Math.max(.4, .95 * (.4 + .6 * d) * (1 + .9 * hi));
     const op = clamp((.2 + .8 * d) * .9 + .6 * hi);
-    return { sx: x * 9 + CX, sy: y * 9 + CY, depth: d,
+    return { sx: x * sc + CX, sy: y * sc + CY, depth: d,
              r, opacity: op, rgb: cRGB(d, hi), idx };
   });
 }
@@ -452,6 +453,7 @@ function stateAvatar(time) {
   const period  = $('avatar','period');
   const thinkSp = $('avatar','thinkSpd');
   const pulseSp = $('avatar','pulseSpd');
+  const breathAmt = $('avatar','breathAmt');
 
   // Cycle: 35% idle, 10% fade-in, 45% thinking, 10% fade-out
   const phase = (time / period) % 1;
@@ -475,7 +477,7 @@ function stateAvatar(time) {
     const angle = idleA + time * spd * m;
 
     // Inner diamond breathes in thinking mode
-    const breath = ring === 0 ? (1 + 0.18 * Math.sin(time * pulseSp * 1.5) * m) : 1;
+    const breath = ring === 0 ? (1 + breathAmt * Math.sin(time * pulseSp * 1.5) * m) : 1;
     const rEff = radius * breath;
 
     const x = Math.cos(angle) * rEff;

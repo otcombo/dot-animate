@@ -71,6 +71,7 @@ function renderSliders(parent, stateName) {
 // Global section: always visible above the state-specific section.
 function buildGlobalSection() {
   globalEl.innerHTML = '';
+  globalEl.className = 'panel-group panel-group-global';
 
   const title = document.createElement('div');
   title.className = 'section-title';
@@ -118,29 +119,31 @@ function buildGlobalSection() {
 // State section: rebuilt every time a different state is selected.
 function buildStateSection(stateName) {
   stateEl.innerHTML = '';
+  stateEl.className = '';
   if (stateName === 'global') return;
 
+  const paramsGroup = document.createElement('div');
+  paramsGroup.className = 'panel-group panel-group-state';
+
   const title = document.createElement('div');
-  title.className = 'section-title';
+  title.className = 'section-title section-title-state';
   title.textContent = stateName.toUpperCase() + ' PARAMETERS';
-  title.style.marginTop = '12px';
-  title.style.paddingTop = '10px';
-  title.style.borderTop = '1px solid #1e1e1e';
-  stateEl.appendChild(title);
+  paramsGroup.appendChild(title);
 
   const defs = PARAM_DEFS[stateName];
   if (!defs || !defs.length) {
     const n = document.createElement('div');
     n.style.cssText = 'color:#444;text-align:center;padding:6px';
     n.textContent = 'No parameters for this state';
-    stateEl.appendChild(n);
+    paramsGroup.appendChild(n);
   } else {
-    renderSliders(stateEl, stateName);
+    renderSliders(paramsGroup, stateName);
   }
+  stateEl.appendChild(paramsGroup);
 
   // Action buttons
   const acts = document.createElement('div');
-  acts.className = 'panel-actions';
+  acts.className = 'panel-actions panel-group panel-group-actions';
   acts.innerHTML =
     '<button data-a="reset">Reset</button>' +
     '<span class="spacer"></span>' +
@@ -281,7 +284,7 @@ function switchTo(i) {
   progress = 0;
   trStart = null;
 
-  labelEl.textContent = STATES[i].name;
+  if (labelEl) labelEl.textContent = STATES[i].name;
   btns.forEach((b, j) => b.classList.toggle('on', j === i));
   buildStateSection(STATES[i].name);
 }
