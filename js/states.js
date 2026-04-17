@@ -303,14 +303,23 @@ function stateRain(time) {
   });
 }
 
-// 13 ── FIGURE8: lemniscate infinity loop + traveling pulse ───────
-//      Math: x=sin θ, y=sin 2θ/2 — Lissajous 1:2 figure
-function stateFigure8(time) {
-  const lp=$('figure8','loop'), ys=$('figure8','yScale'), zd=$('figure8','zDepth');
-  const ro=$('figure8','rot'), ti=$('figure8','tilt'), sc=$('figure8','scale');
-  const ps=$('figure8','pSpd'), pw=$('figure8','pW');
+// 13 ── INFINITE: lemniscate infinity loop + traveling pulse ─────
+//      Math: x=sin θ, y=sin 2θ/2 — Lissajous 1:2 figure.
+//      Uses 20 dots on the curve (20 hidden at center) so spacing
+//      along the curve matches thinking's sphere density (~3–4 svg
+//      units between dots). Avoids the pile-up from 40 points on
+//      the self-intersecting lemniscate.
+const INFINITE_N = 20;
+function stateInfinite(time) {
+  const lp=$('infinite','loop'), ys=$('infinite','yScale'), zd=$('infinite','zDepth');
+  const ro=$('infinite','rot'), ti=$('infinite','tilt'), sc=$('infinite','scale');
+  const ps=$('infinite','pSpd'), pw=$('infinite','pW');
   return PTS.map((pt, idx) => {
-    const theta = (idx / N) * PI * 2 + time * lp;
+    if (idx >= INFINITE_N) {
+      return { sx: CX, sy: CY, depth: 0, r: .2, opacity: 0, rgb: RGB_F, idx };
+    }
+    // Half-step offset so no dot sits exactly at the crossover (θ=0, π)
+    const theta = ((idx + .5) / INFINITE_N) * PI * 2 + time * lp;
     let x = Math.sin(theta), y = Math.sin(2 * theta) * ys, z = Math.cos(theta) * zd;
     const a = time * ro, c1 = Math.cos(a), s1 = Math.sin(a);
     const rx = x * c1 + z * s1, rz = -x * s1 + z * c1; x = rx; z = rz;
@@ -318,9 +327,10 @@ function stateFigure8(time) {
     const ry = y * ct - z * st; z = y * st + z * ct; y = ry;
     const d = clamp((z + 1) / 2);
     const pT = (time * ps) % 1;
-    const dist = Math.abs(idx / N - pT), wrap = Math.min(dist, 1 - dist);
+    const dist = Math.abs(idx / INFINITE_N - pT), wrap = Math.min(dist, 1 - dist);
     const hi = wrap < pw ? (1 - wrap / pw) ** 2 : 0;
-    const r = Math.max(.4, .95 * (.4 + .6 * d) * (1 + .9 * hi));
+    // Thinking-style size/opacity so visible dots feel comparable to sphere states
+    const r = Math.max(.4, .95 * (.4 + .6 * d) * (1 + .7 * hi));
     const op = clamp((.2 + .8 * d) * .9 + .6 * hi);
     return { sx: x * sc + CX, sy: y * sc + CY, depth: d,
              r, opacity: op, rgb: cRGB(d, hi), idx };
@@ -517,7 +527,7 @@ const STATES = [
   { name: 'pendulum', fn: statePendulum },
   { name: 'wobble',   fn: stateWobble   },
   { name: 'rain',     fn: stateRain     },
-  { name: 'figure8',  fn: stateFigure8  },
+  { name: 'infinite', fn: stateInfinite },
   { name: 'grid',     fn: stateGrid     },
   { name: 'chat',     fn: stateChat     },
   { name: 'menu',     fn: stateMenu     },

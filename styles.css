@@ -23,7 +23,7 @@
   --fs-label: 10px;
   --fs-value: 11px;
   --fs-action: 12px;
-  --space-group: 14px;
+  --space-group: 24px;
   --space-subgroup: 10px;
 }
 
@@ -38,7 +38,7 @@ body {
 /* ── Main shell (trigger + buttons + panel) ─────────────────────── */
 .app-shell {
   width: min(640px, 95vw);
-  min-height: 540px;
+  height: 90vh;
   display: grid;
   grid-template-rows: 1fr auto auto;
   gap: 14px;
@@ -51,7 +51,8 @@ body {
 
 /* ── Ball display ───────────────────────────────────────────────── */
 .ball-container {
-  width: 100%; min-height: 300px;
+  width: 100%;
+  min-height: 200px;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; user-select: none; -webkit-user-select: none;
   transition: transform .12s ease, background .25s ease;
@@ -75,16 +76,24 @@ body {
 
 /* ── State buttons ──────────────────────────────────────────────── */
 .buttons {
-  display: flex; flex-wrap: wrap; gap: 5px;
-  justify-content: center; width: 100%;
+  display: flex; flex-wrap: nowrap; gap: 5px;
+  justify-content: flex-start; width: 100%;
+  overflow-x: auto; overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 12px 24px; 
+}
+.buttons::-webkit-scrollbar {
+  display: none;
 }
 .buttons button {
   background: var(--bg-btn-alt); color: var(--text-muted);
   border: 1px solid var(--border-strong); border-radius: var(--radius-lg);
-  padding: 8px 10px; font-size: 11px;
+  padding: 10px 16px; font-size: 11px;
   font-family: 'SF Mono', 'Fira Code', monospace;
   letter-spacing: .03em; cursor: pointer;
   transition: all var(--transition-fast);
+  flex: 0 0 auto;
 }
 .buttons button:hover { border-color: var(--text-primary); color: var(--text-secondary); }
 .buttons button.on { background: var(--text-primary); color: var(--bg-page); border-color: var(--text-primary); }
@@ -101,12 +110,9 @@ body {
   gap: var(--space-group);
 }
 .panel-group { width: 100%; }
-.panel-group-global { padding-bottom: var(--space-group); border-bottom: 1px solid #1e1e1e; }
-.panel-group-state { padding-bottom: var(--space-subgroup); border-bottom: 1px solid #1e1e1e; }
-.panel-group-actions { margin-top: 0; padding-top: 0; border-top: 0; }
 .param-grid {
   display: grid; grid-template-columns: 1fr 1fr;
-  gap: 20px 20px;
+  gap: 10px 50px;
 }
 @media (max-width: 480px) {
   .param-grid { grid-template-columns: 1fr; }

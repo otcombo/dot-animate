@@ -110,7 +110,7 @@ const PARAM_DEFS = {
     { key: 'bSpd',     label: 'Band speed',   min: .1,   max: 1.5, step: .05,  default: .55 },
     { key: 'bW',       label: 'Band width',   min: .05,  max: .5,  step: .02,  default: .25 },
   ],
-  figure8: [
+  infinite: [
     { key: 'loop',     label: 'Loop speed',   min: .1,   max: 1.2, step: .05,  default: .45 },
     { key: 'yScale',   label: 'Y scale',      min: .2,   max: .9,  step: .05,  default: .55 },
     { key: 'zDepth',   label: 'Z depth',      min: .1,   max: .6,  step: .05,  default: .35 },

@@ -10,6 +10,7 @@ const labelEl   = document.getElementById('label');
 const btnsEl    = document.getElementById('buttons');
 const globalEl  = document.getElementById('globalSection');
 const stateEl   = document.getElementById('stateSection');
+const actionEl  = document.getElementById('actionSection');
 const ns        = 'http://www.w3.org/2000/svg';
 
 // ── Create the 40 SVG circles ───────────────────────────────────────
@@ -32,6 +33,61 @@ const btns = STATES.map((st, i) => {
 // =====================================================================
 //  Parameter Panel
 // =====================================================================
+
+let stateResizeCleanup = null;
+let stateResizeTimeout = null;
+
+function animateStateSectionResize(updateUI) {
+  if (!stateEl) {
+    updateUI();
+    return;
+  }
+
+  if (stateResizeCleanup) stateResizeCleanup();
+
+  const startH = stateEl.getBoundingClientRect().height;
+  stateEl.style.height = `${startH}px`;
+  stateEl.style.overflow = 'hidden';
+  stateEl.style.transition = 'height .22s ease';
+
+  updateUI();
+
+  stateEl.style.height = 'auto';
+  const endH = stateEl.getBoundingClientRect().height;
+  stateEl.style.height = `${startH}px`;
+  stateEl.offsetHeight;
+
+  if (Math.abs(endH - startH) < 1) {
+    stateEl.style.height = '';
+    stateEl.style.overflow = '';
+    stateEl.style.transition = '';
+    return;
+  }
+
+  const onDone = e => {
+    if (e.propertyName !== 'height') return;
+    if (stateResizeCleanup) stateResizeCleanup();
+  };
+
+  stateResizeCleanup = () => {
+    stateEl.removeEventListener('transitionend', onDone);
+    if (stateResizeTimeout) clearTimeout(stateResizeTimeout);
+    stateEl.style.height = '';
+    stateEl.style.overflow = '';
+    stateEl.style.transition = '';
+    stateResizeCleanup = null;
+    stateResizeTimeout = null;
+  };
+
+  stateEl.addEventListener('transitionend', onDone);
+  stateResizeTimeout = setTimeout(() => {
+    if (stateResizeCleanup) stateResizeCleanup();
+  }, 320);
+
+  requestAnimationFrame(() => {
+    stateEl.style.height = `${endH}px`;
+  });
+}
 
 // Shared: render a grid of sliders for a given state name.
 function renderSliders(parent, stateName) {
@@ -140,17 +196,21 @@ function buildStateSection(stateName) {
     renderSliders(paramsGroup, stateName);
   }
   stateEl.appendChild(paramsGroup);
+}
 
-  // Action buttons
+function buildActionSection(stateName) {
+  actionEl.innerHTML = '';
+  actionEl.className = 'panel-group panel-group-actions';
+
   const acts = document.createElement('div');
-  acts.className = 'panel-actions panel-group panel-group-actions';
+  acts.className = 'panel-actions';
   acts.innerHTML =
     '<button data-a="reset">Reset</button>' +
     '<span class="spacer"></span>' +
     '<button data-a="export">Export</button>' +
     '<button data-a="import">Import</button>';
   acts.addEventListener('click', onPanelAction(stateName));
-  stateEl.appendChild(acts);
+  actionEl.appendChild(acts);
 }
 
 // Action handler factory ────────────────────────────────────────────
@@ -172,7 +232,9 @@ function onPanelAction(stateName) {
         CFG[stateName + '.' + p.key] = p.default;
       });
       buildGlobalSection();
-      buildStateSection(stateName);
+      animateStateSectionResize(() => {
+        buildStateSection(stateName);
+      });
       persistCFG();
     }
 
@@ -286,7 +348,10 @@ function switchTo(i) {
 
   if (labelEl) labelEl.textContent = STATES[i].name;
   btns.forEach((b, j) => b.classList.toggle('on', j === i));
-  buildStateSection(STATES[i].name);
+  animateStateSectionResize(() => {
+    buildStateSection(STATES[i].name);
+  });
+  buildActionSection(STATES[i].name);
 }
 
 trigger.addEventListener('click', () => switchTo((toIdx + 1) % STATES.length));
@@ -294,6 +359,7 @@ trigger.addEventListener('click', () => switchTo((toIdx + 1) % STATES.length));
 // ── Initial panel render ────────────────────────────────────────────
 buildGlobalSection();
 buildStateSection('idle');
+buildActionSection('idle');
 
 // =====================================================================
 //  Animation loop
