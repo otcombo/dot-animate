@@ -234,9 +234,22 @@ function onPanelAction(stateName) {
 }
 
 // =====================================================================
-//  State machine (click → transition target state)
+//  State machine — nearest-neighbor particle matching on transitions
 // =====================================================================
+//
+//  Each physical circle (DOM element) is assigned to a fibonacci idx
+//  of the active state. On a transition the assignment is recomputed
+//  by pairing every physical particle with its nearest target slot
+//  (minimum-distance greedy matching). This keeps dot travel paths
+//  short — no more dots flying across the whole canvas.
+//
+//  renderAssignment[physI] = fibIdx the physical circle is playing
+//  fromSnapshot — the physical positions captured at transition start
+// =====================================================================
+
 let fromIdx = 0, toIdx = 0, progress = 1, trStart = null;
+let renderAssignment = Array.from({ length: 40 }, (_, i) => i);  // identity
+let fromSnapshot = null;
 
 function trDur(f, t) {
   return STATES[t].name === 'idle' ? 1.2
@@ -247,10 +260,68 @@ function trEase(f) {
   return STATES[f].name === 'idle' ? easeO3 : easeIO3;
 }
 
+// Greedy minimum-distance assignment (process smallest pair first).
+// O(n² log n) — for n=40 this is ~17k ops, computed once per switch.
+function assignNearest(from, to) {
+  const n = from.length;
+  const pairs = new Array(n * n);
+  let k = 0;
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      const dx = from[i].sx - to[j].sx;
+      const dy = from[i].sy - to[j].sy;
+      pairs[k++] = [dx * dx + dy * dy, i, j];
+    }
+  }
+  pairs.sort((a, b) => a[0] - b[0]);
+  const fUsed = new Uint8Array(n);
+  const tUsed = new Uint8Array(n);
+  const asgn = new Array(n);
+  for (let p = 0; p < pairs.length; p++) {
+    const [, i, j] = pairs[p];
+    if (fUsed[i] || tUsed[j]) continue;
+    asgn[i] = j;
+    fUsed[i] = 1;
+    tUsed[j] = 1;
+  }
+  return asgn;
+}
+
+// Current physical particles — may be mid-transition blend
+function currentPhys() {
+  const toP = STATES[toIdx].fn(elapsed);
+  return renderAssignment.map((fibIdx, physI) => {
+    const t = toP[fibIdx];
+    if (progress >= 1 || !fromSnapshot) return { ...t };
+    const f = fromSnapshot[physI];
+    return {
+      sx: lerp(f.sx, t.sx, progress),
+      sy: lerp(f.sy, t.sy, progress),
+      depth: lerp(f.depth, t.depth, progress),
+      r: Math.max(.2, lerp(f.r, t.r, progress)),
+      opacity: clamp(lerp(f.opacity, t.opacity, progress)),
+      rgb: lerpC(f.rgb, t.rgb, progress),
+      idx: physI,
+    };
+  });
+}
+
 function switchTo(i) {
-  if (i === toIdx && progress >= 1) return;
-  fromIdx = toIdx; toIdx = i;
-  progress = 0; trStart = null;
+  if (i === toIdx) return;
+
+  // Snapshot where circles ARE right now (physical order)
+  const curPhys = currentPhys();
+  // Where the new state wants particles (fibonacci order)
+  const newP = STATES[i].fn(elapsed);
+  // Remap: each physical circle picks its closest slot in the new state
+  renderAssignment = assignNearest(curPhys, newP);
+
+  fromSnapshot = curPhys;
+  fromIdx = toIdx;
+  toIdx = i;
+  progress = 0;
+  trStart = null;
+
   labelEl.textContent = STATES[i].name;
   btns.forEach((b, j) => b.classList.toggle('on', j === i));
   buildStateSection(STATES[i].name);
@@ -278,29 +349,49 @@ function frame(now) {
     if (!trStart) trStart = t;
     const raw = clamp((t - trStart) / trDur(fromIdx, toIdx));
     progress = trEase(fromIdx)(raw);
-    if (raw >= 1) progress = 1;
+    if (raw >= 1) {
+      progress = 1;
+      fromSnapshot = null;                       // done blending
+    }
   }
 
-  // Compute particles (blended or pure)
-  const particles = progress >= 1
-    ? STATES[toIdx].fn(elapsed)
-    : blend(STATES[fromIdx].fn(elapsed), STATES[toIdx].fn(elapsed), progress);
+  // Active state's particles (fibonacci order)
+  const toP = STATES[toIdx].fn(elapsed);
 
-  // Render with global multipliers
+  // Global render multipliers
   const gS = $('global', 'scale');
   const gD = $('global', 'dotSize');
   const gO = $('global', 'opacity');
 
-  particles.forEach(p => {
-    const el = circles[p.idx];
-    el.setAttribute('cx', CX + (p.sx - CX) * gS);
-    el.setAttribute('cy', CY + (p.sy - CY) * gS);
-    el.setAttribute('r', p.r * gD);
-    el.setAttribute('fill', rgbStr(p.rgb));
-    const op = p.opacity * gO;
+  // Render in physical-circle order via renderAssignment
+  for (let phys = 0; phys < 40; phys++) {
+    const fibIdx = renderAssignment[phys];
+    const target = toP[fibIdx];
+
+    let sx, sy, r, opacity, rgb, depth;
+    if (progress >= 1 || !fromSnapshot) {
+      sx = target.sx; sy = target.sy;
+      r  = target.r;  opacity = target.opacity;
+      rgb = target.rgb; depth = target.depth;
+    } else {
+      const f = fromSnapshot[phys];
+      sx = lerp(f.sx, target.sx, progress);
+      sy = lerp(f.sy, target.sy, progress);
+      r  = Math.max(.2, lerp(f.r, target.r, progress));
+      opacity = clamp(lerp(f.opacity, target.opacity, progress));
+      rgb = lerpC(f.rgb, target.rgb, progress);
+      depth = lerp(f.depth, target.depth, progress);
+    }
+
+    const el = circles[phys];
+    el.setAttribute('cx', CX + (sx - CX) * gS);
+    el.setAttribute('cy', CY + (sy - CY) * gS);
+    el.setAttribute('r', r * gD);
+    el.setAttribute('fill', rgbStr(rgb));
+    const op = opacity * gO;
     el.setAttribute('opacity', op < 0.005 ? 0 : op > 1 ? 1 : op);
-    el._d = p.depth;
-  });
+    el._d = depth;
+  }
 
   // Sort SVG elements by depth for correct layering
   [...circles].sort((a, b) => a._d - b._d).forEach(el => svg.appendChild(el));
