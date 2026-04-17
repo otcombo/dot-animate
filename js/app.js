@@ -7,7 +7,6 @@
 const svg       = document.getElementById('ball');
 const trigger   = document.getElementById('trigger');
 const labelEl   = document.getElementById('label');
-const navEl     = document.getElementById('nav');
 const btnsEl    = document.getElementById('buttons');
 const globalEl  = document.getElementById('globalSection');
 const stateEl   = document.getElementById('stateSection');
@@ -20,14 +19,7 @@ const circles = PTS.map(() => {
   return el;
 });
 
-// ── Nav dots + state-button row ─────────────────────────────────────
-const navDots = STATES.map((_, i) => {
-  const d = document.createElement('span');
-  d.className = 'dot' + (i === 0 ? ' on' : '');
-  navEl.appendChild(d);
-  return d;
-});
-
+// ── State-button row ────────────────────────────────────────────────
 const btns = STATES.map((st, i) => {
   const b = document.createElement('button');
   b.textContent = st.name;
@@ -260,7 +252,6 @@ function switchTo(i) {
   fromIdx = toIdx; toIdx = i;
   progress = 0; trStart = null;
   labelEl.textContent = STATES[i].name;
-  navDots.forEach((d, j) => d.classList.toggle('on', j === i));
   btns.forEach((b, j) => b.classList.toggle('on', j === i));
   buildStateSection(STATES[i].name);
 }

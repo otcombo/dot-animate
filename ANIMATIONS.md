@@ -7,7 +7,7 @@
 - **State function**: `(time) → particle[40]`, each particle has `{ sx, sy, depth, r, opacity, rgb, idx }`
 - **Transitions**: any state → any state via linear interpolation with easing (0.7–1.2s)
 - **Depth system**: 3-tier coloring by z-depth
-  - Front (d > 0.65): `#74B8D4`
+  - Front (d > 0.65): `#FFFFFF`
   - Mid (d > 0.4): `#3C78A8`
   - Back: `#1A2840`
   - Size and opacity also scale with depth
