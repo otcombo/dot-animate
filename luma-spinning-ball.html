@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dot Animate — 12 States</title>
+<title>Dot Animate — 16 States</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -36,7 +36,7 @@
   .nav .dot.on { background: #74B8D4; transform: scale(1.4); }
   .buttons {
     display: flex; flex-wrap: wrap; gap: 5px;
-    justify-content: center; max-width: 340px; margin-top: 4px;
+    justify-content: center; max-width: 420px; margin-top: 4px;
   }
   .buttons button {
     background: #161616; color: #555;
@@ -64,8 +64,9 @@
 
 <script>
 // =====================================================================
-//  Dot Animate — 12 states
-//  idle thinking pulse swirl ripple orbit helix nova knot torus pendulum split
+//  Dot Animate — 16 states
+//  idle thinking pulse swirl ripple orbit helix nova
+//  knot torus pendulum split lorenz harmonic fourier bounce
 // =====================================================================
 
 // ---------- Palette ----------
@@ -104,8 +105,23 @@ const dRGB=d=>d>.65?RGB_F:d>.4?RGB_M:RGB_B;
 // Band color helper: blend toward front when highlighted
 const bRGB=(d,hi)=>hi>.3?lerpC(dRGB(d),RGB_F,hi):dRGB(d);
 
+// ---------- Pre-computed Lorenz attractor trajectory (40 points) -----
+const LORENZ=(()=>{
+  let x=.1,y=.1,z=.1;const s=10,r=28,b=8/3,h=.003,pts=[];
+  for(let i=0;i<2000;i++){x+=s*(y-x)*h;y+=(x*(r-z)-y)*h;z+=(x*y-b*z)*h;}
+  for(let i=0;i<N;i++){
+    for(let j=0;j<120;j++){x+=s*(y-x)*h;y+=(x*(r-z)-y)*h;z+=(x*y-b*z)*h;}
+    pts.push({x,y,z});
+  }
+  let mx=0,my=0,mz=0;pts.forEach(p=>{mx+=p.x;my+=p.y;mz+=p.z;});
+  mx/=N;my/=N;mz/=N;
+  let sc=0;pts.forEach(p=>{sc=Math.max(sc,Math.abs(p.x-mx),Math.abs(p.y-my),Math.abs(p.z-mz));});
+  pts.forEach(p=>{p.x=(p.x-mx)/sc;p.y=(p.y-my)/sc;p.z=(p.z-mz)/sc;});
+  return pts;
+})();
+
 // =====================================================================
-//  12 STATE FUNCTIONS
+//  16 STATE FUNCTIONS
 // =====================================================================
 
 // 0 ── IDLE ───────────────────────────────────────────────────────────
@@ -323,6 +339,99 @@ function stateSplit(time){
   });
 }
 
+// 12 ── LORENZ: strange attractor + traveling pulse ───────────────────
+//      Math: dx/dt=σ(y−x), dy/dt=x(ρ−z)−y, dz/dt=xy−βz  (chaos theory)
+function stateLorenz(time){
+  const a=time*.35,c1=Math.cos(a),s1=Math.sin(a),c2=Math.cos(.3),s2=Math.sin(.3);
+  return PTS.map((pt,idx)=>{
+    const lp=LORENZ[idx];
+    // Rotate Y then tilt X
+    const rx=lp.x*c1+lp.z*s1,rz0=-lp.x*s1+lp.z*c1;
+    const ry=lp.y*c2-rz0*s2,rz=lp.y*s2+rz0*c2;
+    const d=clamp((rz+1)/2);
+    // Traveling pulse along attractor trajectory
+    const pT=(time*.25)%1,dist=Math.abs(idx/N-pT),wrap=Math.min(dist,1-dist);
+    const hi=wrap<.1?(1-wrap/.1)**2:0;
+    const r=Math.max(.38,(.42+.42*d)*(1+.7*hi)),op=clamp((.2+.7*d)+.55*hi);
+    return{sx:rx*7.5+CX,sy:ry*7.5+CY,depth:d,r,opacity:op,rgb:bRGB(d,hi),idx};
+  });
+}
+
+// 13 ── HARMONIC: spherical harmonics morphing ────────────────────────
+//      Math: Y_l^m(θ,φ) — quantum orbital shapes cycling through modes
+function stateHarmonic(time){
+  const a=time*.3,c1=Math.cos(a),s1=Math.sin(a),c2=Math.cos(.2),s2=Math.sin(.2);
+  const mode=time*.4;
+  // Smooth blend weights for 4 harmonic modes (cycle via cos²)
+  const w1=Math.max(0,Math.cos(mode))**2;
+  const w2=Math.max(0,Math.cos(mode-PI/2))**2;
+  const w3=Math.max(0,Math.cos(mode-PI))**2;
+  const w4=Math.max(0,Math.cos(mode-PI*1.5))**2;
+  return PTS.map((pt,idx)=>{
+    const phi=Math.atan2(pt.z,pt.x);
+    // Spherical harmonic deformations
+    const h1=3*pt.y*pt.y-1;                     // Y₂⁰  peanut
+    const h2=(1-pt.y*pt.y)*Math.cos(2*phi);     // Y₂²  clover
+    const h3=pt.y*(5*pt.y*pt.y-3);              // Y₃⁰  triple lobe
+    const h4=pt.y;                                // Y₁⁰  dipole
+    const deform=.3*(w1*h1+w2*h2+w3*h3+w4*h4);
+    const sc=1+deform;
+    const dp={x:pt.x*sc,y:pt.y*sc,z:pt.z*sc};
+    const c=rot(dp,c1,s1,c2,s2);
+    const d=clamp((c.z/1.3+1)/2);
+    // Band: highlight the lobes (large deformation)
+    const lobe=Math.abs(deform)/.3;
+    const hi=lobe>.45?(lobe-.45)/.55:0;
+    const r=.95*(.4+.6*d)*(1+.55*hi),op=((.2+.8*d)+.35*hi)*.9;
+    return{sx:9.5*c.x+CX,sy:9.5*c.y+CY,depth:clamp(d),
+           r:Math.max(.4,r),opacity:clamp(op),rgb:bRGB(clamp(d),hi),idx};
+  });
+}
+
+// 14 ── FOURIER: epicycloid spirograph + traveling pulse ──────────────
+//      Math: z(θ) = Σ rₖ·e^(iωₖθ)  — Fourier series as nested rotating circles
+function stateFourier(time){
+  const r1=.55,w1=1, r2=.3,w2=-3, r3=.12,w3=7;  // 3 Fourier components
+  return PTS.map((pt,idx)=>{
+    const theta=(idx/N)*PI*2;
+    let x=r1*Math.cos(w1*theta+time*.6)+r2*Math.cos(w2*theta+time*.9)+r3*Math.cos(w3*theta+time*1.4);
+    let y=r1*Math.sin(w1*theta+time*.6)+r2*Math.sin(w2*theta+time*.9)+r3*Math.sin(w3*theta+time*1.4);
+    let z=(r2*Math.sin((w2+1)*theta+time*.7)+r3*Math.cos(w3*theta+time*1.1))*.7;
+    // Tilt for 3D perspective
+    const ct=Math.cos(.3),st=Math.sin(.3);
+    const ry=y*ct-z*st,rz=y*st+z*ct; y=ry; z=rz;
+    const d=clamp((z+.6)/1.2);
+    // Traveling pulse along the spirograph curve
+    const pT=(time*.35)%1,dist=Math.abs(idx/N-pT),wrap=Math.min(dist,1-dist);
+    const hi=wrap<.1?(1-wrap/.1)**2:0;
+    const r=Math.max(.38,(.42+.42*d)*(1+.7*hi)),op=clamp((.2+.7*d)+.55*hi);
+    return{sx:x*8.5+CX,sy:y*8.5+CY,depth:d,r,opacity:op,rgb:bRGB(d,hi),idx};
+  });
+}
+
+// 15 ── BOUNCE: elastic collision in cube + wall-flash band ──────────
+//      Math: triangle wave per axis = elastic reflection off walls
+function stateBounce(time){
+  const tri=v=>{const m=((v%2)+2)%2;return m<1?m*2-1:3-m*2;};
+  const ar=time*.2,cr=Math.cos(ar),sr=Math.sin(ar),ct=Math.cos(.15),st=Math.sin(.15);
+  return PTS.map((pt,idx)=>{
+    const s=idx*1.618033;
+    // Independent bounce per axis (deterministic, irrational-ratio speeds)
+    const bx=tri(time*(.35+Math.sin(s*3.1)*.2)+s*1.3);
+    const by=tri(time*(.3+Math.cos(s*4.7)*.15)+s*2.7);
+    const bz=tri(time*(.25+Math.sin(s*2.3)*.1)+s*4.1);
+    // Wall proximity → band glow
+    const wall=Math.min(1-Math.abs(bx),1-Math.abs(by),1-Math.abs(bz));
+    const hi=wall<.13?(1-wall/.13):0;
+    // Rotate scene slowly
+    let x=bx*cr+bz*sr,z=-bx*sr+bz*cr;
+    let y=by*ct-z*st; z=by*st+z*ct;
+    const d=clamp((z+1)/2);
+    const r=Math.max(.38,.42+.35*d+.3*hi),op=clamp(.25+.55*d+.35*hi);
+    return{sx:x*7.5+CX,sy:y*7.5+CY,depth:d,r,opacity:op,rgb:bRGB(d,hi),idx};
+  });
+}
+
 // =====================================================================
 const STATES=[
   {name:'idle',fn:stateIdle},        {name:'thinking',fn:stateThinking},
@@ -331,6 +440,8 @@ const STATES=[
   {name:'helix',fn:stateHelix},      {name:'nova',fn:stateNova},
   {name:'knot',fn:stateKnot},        {name:'torus',fn:stateTorus},
   {name:'pendulum',fn:statePendulum},{name:'split',fn:stateSplit},
+  {name:'lorenz',fn:stateLorenz},    {name:'harmonic',fn:stateHarmonic},
+  {name:'fourier',fn:stateFourier},  {name:'bounce',fn:stateBounce},
 ];
 
 // ---------- Blend ----------

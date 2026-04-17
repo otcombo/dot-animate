@@ -225,6 +225,79 @@
 
 ---
 
+### 12. lorenz — 洛伦兹吸引子
+
+| Property | Value |
+|----------|-------|
+| Motion | Rotation @ 0.35 rad/s around Y, tilt 0.3 rad |
+| Shape | Lorenz strange attractor trajectory (butterfly) |
+| Highlight | Traveling pulse along the attractor path |
+
+**Concept**: Chaos theory visualization. 40 points sampled from a Lorenz attractor trajectory, pre-computed via Euler integration (σ=10, ρ=28, β=8/3). The iconic butterfly shape rotates in 3D.
+
+**Math**:
+- Lorenz system: `dx/dt = σ(y−x)`, `dy/dt = x(ρ−z)−y`, `dz/dt = xy−βz`
+- Pre-computed: 2000 warm-up steps, then 40 samples at 120-step intervals (h=0.003)
+- Auto-centered and normalized to [-1,1]³ at init time
+- **Band**: traveling pulse at `(time×0.25) mod 1`, quadratic falloff within 0.1
+
+---
+
+### 13. harmonic — 球谐函数
+
+| Property | Value |
+|----------|-------|
+| Motion | Rotation @ 0.3 rad/s + continuous shape morphing |
+| Shape | Sphere deformed by blended spherical harmonics |
+| Highlight | Lobe glow — where deformation magnitude is highest |
+
+**Concept**: Quantum orbital visualization. The sphere continuously morphs through different spherical harmonic shapes (Y₂⁰ peanut, Y₂² clover, Y₃⁰ triple-lobe, Y₁⁰ dipole), smoothly blending between modes.
+
+**Math**:
+- 4 harmonic modes blended via `cos²(mode − k·π/2)` weights — smooth cycling
+- Y₂⁰ = `3y² − 1`, Y₂² = `(1−y²)cos 2φ`, Y₃⁰ = `y(5y²−3)`, Y₁⁰ = `y`
+- Radial deformation: `scale = 1 + 0.3 × Σ(wₖ × Yₖ)`
+- **Band**: `|deform| / 0.3` — the lobes (where radius deviates most from 1.0) glow brighter
+
+---
+
+### 14. fourier — 傅里叶螺线
+
+| Property | Value |
+|----------|-------|
+| Motion | Three nested rotating circles at different speeds |
+| Shape | Epicycloid / spirograph curve in 3D |
+| Highlight | Traveling pulse along the curve |
+
+**Concept**: Fourier series as geometry. Three complex exponentials `rₖe^(iωₖθ)` summed to produce an epicycloid, extended into 3D with a cross-harmonic z-component. The spirograph pattern evolves as time shifts the phases.
+
+**Math**:
+- Component 1: r=0.55, ω=1 (base circle)
+- Component 2: r=0.3, ω=−3 (3:1 counter-rotating → epitrochoid)
+- Component 3: r=0.12, ω=7 (high-frequency detail)
+- Z: `r₂·sin((ω₂+1)θ+t) + r₃·cos(ω₃θ+t)` scaled ×0.7, tilted 0.3 rad
+- **Band**: traveling pulse at `(time×0.35) mod 1`, quadratic falloff within 0.1
+
+---
+
+### 15. bounce — 弹性碰撞
+
+| Property | Value |
+|----------|-------|
+| Motion | Independent bounce per axis (triangle wave) |
+| Shape | Particles inside a cube, bouncing off walls |
+| Highlight | Wall-flash — dots glow when hitting boundaries |
+
+**Concept**: Newtonian elastic collision. Each dot bounces independently inside a cube, with irrational speed ratios per axis ensuring non-repeating paths. The whole scene rotates slowly. Dots flash when they hit a wall.
+
+**Math**:
+- Triangle wave: `tri(v) = |2·((v mod 2) − 1)| − 1` — maps any input to [-1,1] with sharp turns at boundaries
+- Per-dot speeds seeded by `idx × φ` with sinusoidal variation per axis
+- Wall proximity: `min(1−|x|, 1−|y|, 1−|z|)` — nearest wall distance
+- **Band**: wall distance < 0.13 → linear glow ramp, simulates impact flash
+
+---
+
 ## Transitions
 
 | From → To | Duration | Easing | Character |
@@ -248,13 +321,13 @@ All transitions interpolate per-particle: position, size, opacity, and color are
 
 ## Ideas for Future States
 
-- **bounce** — elastic collision: dots bounce off sphere boundary walls
 - **flock** — boids: dots follow flocking rules (separation, alignment, cohesion)
 - **morph** — shape shift: dots rearrange into geometric solids (cube, tetrahedron, octahedron)
 - **rain** — cascade: dots fall from top with staggered timing, reform at top
 - **magnetic** — field lines: dots trace paths along a dipole magnetic field
-- **lorenz** — Lorenz attractor: dots trace the butterfly-shaped strange attractor (chaos theory)
 - **mobius** — Möbius strip: dots on a non-orientable surface
-- **fourier** — epicycloids: dots trace Fourier series as nested rotating circles (spirograph)
-- ~~galaxy~~ — tried, 40 dots too sparse for a disc. Needs 80+
-- ~~firefly~~ — replaced by knot. Too similar to ripple in visual result
+- **lattice** — crystal structure: 3D rotating lattice (BCC/FCC)
+- **lissajous** — 3D Lissajous figures with integer frequency ratios
+- **soliton** — solitary wave propagation on the sphere surface
+- ~~galaxy~~ — tried, 40 dots too sparse for a disc
+- ~~firefly~~ — replaced by knot, too similar to ripple
