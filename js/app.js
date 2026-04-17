@@ -113,24 +113,6 @@ function buildGlobalSection() {
     presets.appendChild(b);
   });
   globalEl.appendChild(presets);
-
-  // Reset globals (numeric + colors)
-  const acts = document.createElement('div');
-  acts.className = 'panel-actions';
-  acts.innerHTML = '<button data-a="reset">Reset globals</button>';
-  acts.addEventListener('click', e => {
-    if (e.target.dataset.a !== 'reset') return;
-    PARAM_DEFS.global.forEach(p => {
-      CFG['global.' + p.key] = p.default;
-    });
-    CFG['color.front'] = '#FFFFFF';
-    CFG['color.mid']   = '#888888';
-    CFG['color.back']  = '#333333';
-    applyPalette();
-    buildGlobalSection();   // rebuild to refresh slider + color-picker values
-    persistCFG();
-  });
-  globalEl.appendChild(acts);
 }
 
 // State section: rebuilt every time a different state is selected.
@@ -161,10 +143,8 @@ function buildStateSection(stateName) {
   acts.className = 'panel-actions';
   acts.innerHTML =
     '<button data-a="reset">Reset</button>' +
-    '<button data-a="save">Save preset</button>' +
-    '<button data-a="load">Load preset</button>' +
     '<span class="spacer"></span>' +
-    '<button data-a="export">Export all</button>' +
+    '<button data-a="export">Export</button>' +
     '<button data-a="import">Import</button>';
   acts.addEventListener('click', onPanelAction(stateName));
   stateEl.appendChild(acts);
@@ -177,55 +157,39 @@ function onPanelAction(stateName) {
     if (!a) return;
 
     if (a === 'reset') {
+      PARAM_DEFS.global.forEach(p => {
+        CFG['global.' + p.key] = p.default;
+      });
+      CFG['color.front'] = '#FFFFFF';
+      CFG['color.mid']   = '#888888';
+      CFG['color.back']  = '#333333';
+      applyPalette();
+
       (PARAM_DEFS[stateName] || []).forEach(p => {
         CFG[stateName + '.' + p.key] = p.default;
       });
+      buildGlobalSection();
       buildStateSection(stateName);
       persistCFG();
     }
 
-    if (a === 'save') {
-      const n = prompt('Preset name:');
-      if (!n) return;
-      const ps = JSON.parse(localStorage.getItem('dotanim_presets') || '{}');
-      const sub = {};
-      Object.keys(CFG).forEach(k => {
-        if (k.startsWith(stateName + '.')) sub[k] = CFG[k];
-      });
-      ps[stateName + '/' + n] = sub;
-      localStorage.setItem('dotanim_presets', JSON.stringify(ps));
-      alert('Saved: ' + n);
-    }
-
-    if (a === 'load') {
-      const ps = JSON.parse(localStorage.getItem('dotanim_presets') || '{}');
-      const names = Object.keys(ps)
-        .filter(n => n.startsWith(stateName + '/'))
-        .map(n => n.split('/')[1]);
-      if (!names.length) { alert('No presets for ' + stateName); return; }
-      const n = prompt('Load preset:\n' + names.join(', '));
-      if (n && ps[stateName + '/' + n]) {
-        Object.assign(CFG, ps[stateName + '/' + n]);
-        buildStateSection(stateName);
-        persistCFG();
-      }
-    }
-
     if (a === 'export') {
+      const ps = JSON.parse(localStorage.getItem('dotanim_presets') || '{}');
       navigator.clipboard
-        .writeText(JSON.stringify(CFG, null, 2))
-        .then(() => alert('Copied all config to clipboard'));
+        .writeText(JSON.stringify(ps, null, 2))
+        .then(() => alert('Copied all presets to clipboard'));
     }
 
     if (a === 'import') {
-      const txt = prompt('Paste JSON config:');
+      const txt = prompt('Paste JSON presets:');
       if (!txt) return;
       try {
-        Object.assign(CFG, JSON.parse(txt));
-        applyPalette();
-        buildGlobalSection();
-        buildStateSection(stateName);
-        persistCFG();
+        const parsed = JSON.parse(txt);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          throw new Error('Invalid preset payload');
+        }
+        localStorage.setItem('dotanim_presets', JSON.stringify(parsed));
+        alert('Imported all presets');
       } catch (err) {
         alert('Invalid JSON');
       }
@@ -251,14 +215,9 @@ let fromIdx = 0, toIdx = 0, progress = 1, trStart = null;
 let renderAssignment = Array.from({ length: 40 }, (_, i) => i);  // identity
 let fromSnapshot = null;
 
-function trDur(f, t) {
-  return STATES[t].name === 'idle' ? 1.2
-       : STATES[f].name === 'idle' ? 0.7
-       : 0.8;
-}
-function trEase(f) {
-  return STATES[f].name === 'idle' ? easeO3 : easeIO3;
-}
+// All transitions: 0.8s with easeOutCubic
+const TR_DURATION = 0.8;
+const TR_EASE = easeO3;
 
 // Greedy minimum-distance assignment (process smallest pair first).
 // O(n² log n) — for n=40 this is ~17k ops, computed once per switch.
@@ -347,8 +306,8 @@ function frame(now) {
   // Advance transition
   if (progress < 1) {
     if (!trStart) trStart = t;
-    const raw = clamp((t - trStart) / trDur(fromIdx, toIdx));
-    progress = trEase(fromIdx)(raw);
+    const raw = clamp((t - trStart) / TR_DURATION);
+    progress = TR_EASE(raw);
     if (raw >= 1) {
       progress = 1;
       fromSnapshot = null;                       // done blending

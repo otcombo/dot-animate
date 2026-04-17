@@ -4,11 +4,28 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+:root {
+  --bg-page: #000000;
+  --bg-hover: #1f1f1f;
+  --bg-surface: #131313;
+  --bg-btn: #1a1a1a;
+  --bg-btn-alt: #161616;
+  --text-primary: #ababab;
+  --text-secondary: #696969;
+  --text-muted: #555;
+  --text-subtle: #666;
+  --border-strong: #1a1a1a;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --transition-fast: .2s;
+}
+
 body {
   min-height: 100vh;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  gap: 14px; background: #0a0a0a;
+  gap: 14px; background: var(--bg-page);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
@@ -20,7 +37,7 @@ body {
   grid-template-rows: 1fr auto auto;
   gap: 14px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--border-strong);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.01);
 }
@@ -33,12 +50,11 @@ body {
   transition: transform .12s ease, background .25s ease;
   border-radius: 14px;
 }
-.ball-container:hover { background: #1f1f1f; }
-.ball-container:active { transform: scale(.93); }
+.ball-container:active { transform: scale(.95); }
 
 /* ── State label + nav dots ─────────────────────────────────────── */
 .state-label {
-  color: #fff; font-size: 12px;
+  color: var(--text-primary); font-size: 12px;
   font-family: 'SF Mono', 'Fira Code', monospace;
   letter-spacing: .08em; text-transform: uppercase;
   min-height: 16px; transition: color .4s;
@@ -48,7 +64,7 @@ body {
   width: 5px; height: 5px; border-radius: 50%;
   background: #333; transition: background .4s, transform .4s;
 }
-.nav .dot.on { background: #fff; transform: scale(1.4); }
+.nav .dot.on { background: var(--text-primary); transform: scale(1.4); }
 
 /* ── State buttons ──────────────────────────────────────────────── */
 .buttons {
@@ -56,22 +72,22 @@ body {
   justify-content: center; width: 100%;
 }
 .buttons button {
-  background: #161616; color: #555;
-  border: 1px solid #2a2a2a; border-radius: 10px;
+  background: var(--bg-btn-alt); color: var(--text-muted);
+  border: 1px solid var(--border-strong); border-radius: var(--radius-lg);
   padding: 3px 9px; font-size: 11px;
   font-family: 'SF Mono', 'Fira Code', monospace;
   letter-spacing: .03em; cursor: pointer;
-  transition: all .2s;
+  transition: all var(--transition-fast);
 }
-.buttons button:hover { border-color: #fff; color: #888; }
-.buttons button.on { background: #fff; color: #0a0a0a; border-color: #fff; }
+.buttons button:hover { border-color: var(--text-primary); color: var(--text-secondary); }
+.buttons button.on { background: var(--text-primary); color: var(--bg-page); border-color: var(--text-primary); }
 
 /* ── Parameter panel ────────────────────────────────────────────── */
 #panel {
   width: 100%;
-  background: #131313;
+  background: var(--bg-surface);
   font-family: 'SF Mono', 'Fira Code', monospace;
-  font-size: 11px; color: #888;
+  font-size: 11px; color: var(--text-secondary);
   padding: 24px;
 }
 .param-grid {
@@ -85,22 +101,22 @@ body {
 /* ── Slider rows ────────────────────────────────────────────────── */
 .pr { display: flex; align-items: center; gap: 8px; }
 .pr-label {
-  width: 90px; flex-shrink: 0; color: #555;
+  width: 90px; flex-shrink: 0; color: var(--text-muted);
   font-size: 10px; letter-spacing: .03em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .pr input[type=range] {
   flex: 1; height: 3px; min-width: 60px;
   -webkit-appearance: none; appearance: none;
-  background: #2a2a2a; border-radius: 2px; outline: none;
+  background: var(--border-strong); border-radius: 2px; outline: none;
 }
 .pr input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none; width: 12px; height: 12px;
-  border-radius: 50%; background: #fff; cursor: pointer;
+  border-radius: 50%; background: var(--text-primary); cursor: pointer;
 }
 .pr-val {
   width: 36px; text-align: right;
-  color: #fff; font-size: 10px;
+  color: var(--text-primary); font-size: 10px;
 }
 
 /* ── Panel action buttons (reset/save/load/export) ──────────────── */
@@ -110,18 +126,18 @@ body {
   border-top: 1px solid #1e1e1e;
 }
 .panel-actions button {
-  background: #1a1a1a; color: #555;
-  border: 1px solid #2a2a2a; border-radius: 8px;
+  background: var(--bg-btn); color: var(--text-muted);
+  border: 1px solid var(--border-strong); border-radius: var(--radius-md);
   padding: 3px 10px; font-size: 10px;
   font-family: inherit; cursor: pointer;
-  transition: all .2s;
+  transition: all var(--transition-fast);
 }
-.panel-actions button:hover { border-color: #fff; color: #aaa; }
+.panel-actions button:hover { border-color: var(--text-primary); color: #aaa; }
 .panel-actions .spacer { flex: 1; }
 
 /* ── Color section (global) ─────────────────────────────────────── */
 .section-title {
-  font-size: 10px; color: #555;
+  font-size: 10px; color: var(--text-muted);
   letter-spacing: .05em; text-transform: uppercase;
   margin-bottom: 8px;
 }
@@ -131,21 +147,21 @@ body {
 }
 .c-pr {
   display: flex; align-items: center; gap: 6px;
-  font-size: 10px; color: #666;
+  font-size: 10px; color: var(--text-subtle);
 }
 .c-pr input[type=color] {
   width: 26px; height: 20px;
-  border: 1px solid #2a2a2a; border-radius: 4px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
   background: none; padding: 0; cursor: pointer;
 }
 .color-presets {
   display: flex; gap: 5px; flex-wrap: wrap;
 }
 .color-presets button {
-  background: #1a1a1a; color: #555;
-  border: 1px solid #2a2a2a; border-radius: 6px;
+  background: var(--bg-btn); color: var(--text-muted);
+  border: 1px solid var(--border-strong); border-radius: 6px;
   padding: 2px 10px; font-size: 10px;
   font-family: inherit; cursor: pointer;
-  transition: all .2s;
+  transition: all var(--transition-fast);
 }
-.color-presets button:hover { border-color: #888; color: #aaa; }
+.color-presets button:hover { border-color: var(--text-secondary); color: #aaa; }
