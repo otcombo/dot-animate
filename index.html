@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dot Animate — 14 States</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Current state name -->
+  <div class="state-label" id="label">idle</div>
+
+  <!-- Small dot indicators (one per state) -->
+  <div class="nav" id="nav"></div>
+
+  <!-- The animation: 40 SVG circles updated each frame -->
+  <div class="ball-container" id="trigger">
+    <svg id="ball" width="52" height="52" viewBox="0 0 22 22"></svg>
+  </div>
+
+  <!-- State selector buttons -->
+  <div class="buttons" id="buttons"></div>
+
+  <!-- Parameter editor: globals (always visible) + state-specific -->
+  <div id="panel">
+    <div id="globalSection"></div>
+    <div id="stateSection"></div>
+  </div>
+
+  <!--
+    Load order matters — each file adds to the shared global scope:
+      core.js   → constants, fibonacci sphere, grid, math helpers, palette
+      config.js → PARAM_DEFS, CFG, color presets, palette apply
+      states.js → 14 animation functions + STATES registry
+      app.js    → UI construction, state machine, animation loop
+  -->
+  <script src="js/core.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/states.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
