@@ -111,24 +111,19 @@ const PARAM_DEFS = {
     { key: 'pSpd',     label: 'Pulse speed',  min: .1,   max: 1,   step: .05,  default: .35 },
     { key: 'pW',       label: 'Pulse width',  min: .03,  max: .2,  step: .01,  default: .1 },
   ],
-  // Inspired by offmenu.design nav-toggle (3×3 menu dots) — our
-  // take: 5×8 matrix with a sweeping column spotlight (band).
+  // offmenu.design nav-toggle — 3×3 menu dot matrix (9 dots visible)
   grid: [
-    { key: 'spX',      label: 'Col spacing',  min: 1.5,  max: 3.5, step: .1,   default: 2.4 },
-    { key: 'spY',      label: 'Row spacing',  min: 1.5,  max: 3.5, step: .1,   default: 2.4 },
+    { key: 'sp',       label: 'Spacing',      min: 3,    max: 8,   step: .2,   default: 5.5 },
     { key: 'bSpd',     label: 'Wave speed',   min: .2,   max: 3,   step: .1,   default: 1.2 },
-    { key: 'bW',       label: 'Wave width',   min: .3,   max: 3,   step: .1,   default: 1.2 },
+    { key: 'bW',       label: 'Wave width',   min: .2,   max: 2,   step: .1,   default: .9 },
   ],
-  // Inspired by offmenu.design chat-icon (12 outer + 4 inner) — our
-  // take: 3 concentric rings (4/12/24) + outward ring-by-ring pulse.
+  // offmenu.design chat-icon — 4-dot diamond + 12-dot outer ring (16 dots visible)
   chat: [
-    { key: 'r1',       label: 'Inner radius', min: 1,    max: 5,   step: .2,   default: 2.5 },
-    { key: 'r2',       label: 'Mid radius',   min: 3,    max: 7,   step: .2,   default: 5 },
-    { key: 'r3',       label: 'Outer radius', min: 6,    max: 10,  step: .2,   default: 9 },
-    { key: 's1',       label: 'Inner speed',  min: -2,   max: 2,   step: .05,  default: .4 },
-    { key: 's2',       label: 'Mid speed',    min: -2,   max: 2,   step: .05,  default: -.3 },
-    { key: 's3',       label: 'Outer speed',  min: -2,   max: 2,   step: .05,  default: .15 },
-    { key: 'bSpd',     label: 'Pulse speed',  min: .1,   max: 2,   step: .05,  default: .8 },
+    { key: 'r1',       label: 'Inner radius', min: 1.5,  max: 5,   step: .2,   default: 3 },
+    { key: 'r2',       label: 'Outer radius', min: 6,    max: 10,  step: .2,   default: 9 },
+    { key: 's1',       label: 'Inner speed',  min: -2,   max: 2,   step: .05,  default: .25 },
+    { key: 's2',       label: 'Outer speed',  min: -2,   max: 2,   step: .05,  default: -.15 },
+    { key: 'bSpd',     label: 'Pulse speed',  min: .1,   max: 2,   step: .05,  default: .7 },
   ],
 };
 

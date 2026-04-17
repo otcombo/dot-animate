@@ -311,57 +311,64 @@ function stateFigure8(time) {
   });
 }
 
-// 14 ── GRID: 5×8 matrix + sweeping column spotlight ───────────────
-//      Inspired by offmenu.design's nav-toggle 3×3 dot menu. Our
-//      enhancement: a vertical bright bar scans left→right through
-//      the grid, lighting up each column in turn with depth-pop.
+// 14 ── GRID: offmenu nav-toggle — 3×3 dot matrix (9 visible) ──────
+//      Exactly matches the original 3×3 kebab-menu layout. Our
+//      enhancement: a vertical bright column sweeps left→right,
+//      lighting up each of the 3 columns in turn. Remaining 31 dots
+//      hide at center (opacity 0) and fade/expand during transitions.
 function stateGrid(time) {
-  const spX=$('grid','spX'), spY=$('grid','spY');
-  const bSpd=$('grid','bSpd'), bW=$('grid','bW');
-  const cols = 8, rows = 5;                            // 8 × 5 = 40
+  const sp = $('grid','sp'), bSpd = $('grid','bSpd'), bW = $('grid','bW');
+  const cols = 3;                                      // 3 × 3 = 9
   return PTS.map((_, idx) => {
+    if (idx >= 9) {
+      return { sx: CX, sy: CY, depth: 0, r: .2, opacity: 0, rgb: RGB_F, idx };
+    }
     const col = idx % cols, row = Math.floor(idx / cols);
-    const x = (col - (cols - 1) / 2) * spX;
-    const y = (row - (rows - 1) / 2) * spY;
-    // Column-sweep spotlight. wave cycles through [-2, cols+2]
-    const wavePos = ((time * bSpd) % (cols + 4)) - 2;
+    const x = (col - 1) * sp, y = (row - 1) * sp;      // centered on 11, 11
+    // Column-sweep spotlight: wave cycles from -1 → cols+1
+    const wavePos = ((time * bSpd) % (cols + 2)) - 1;
     const dist = Math.abs(col - wavePos);
     const hi = dist < bW ? (1 - dist / bW) ** 1.5 : 0;
-    // 2D layout — fake depth from the band so highlighted dots "pop"
-    const d = 0.45 + 0.4 * hi;
-    const r = Math.max(.4, .9 * (.4 + .6 * d) * (1 + .7 * hi));
-    const op = clamp((.4 + .4 * d) + .45 * hi);
+    // Uniform dots at rest; band boosts size + opacity (matches
+    // offmenu's "all-white dots, highlight on interaction" feel)
+    const d = 0.7 + 0.3 * hi;                          // stays in front tier for white
+    const r = Math.max(.4, .58 * (1 + .7 * hi));
+    const op = clamp(.78 + .22 * hi);
     return { sx: CX + x, sy: CY + y, depth: d,
              r, opacity: op, rgb: bRGB(d, hi), idx };
   });
 }
 
-// 15 ── CHAT: 3 concentric rings + outward radial pulse ────────────
-//      Inspired by offmenu.design's chat-icon (12-dot ring + 4-dot
-//      diamond). Our enhancement: 3 rings of 4/12/24 dots with
-//      independent (counter-)rotation speeds, and a bright pulse
-//      that expands outward — ring 0 → 1 → 2 — evoking a "thinking"
-//      avatar waking up in waves.
+// 15 ── CHAT: offmenu chat icon — 4-dot diamond + 12-dot ring ──────
+//      Exactly matches the original: 4 inner dots in diamond, 12
+//      outer dots on a ring, both at their original geometric
+//      positions (4 + 12 = 16 visible, 24 hidden at center).
+//      Our enhancement: rings can counter-rotate at independent
+//      speeds, and a radial pulse expands from inner → outer,
+//      evoking a "thinking" / "listening" avatar.
 function stateChat(time) {
-  const r1=$('chat','r1'), r2=$('chat','r2'), r3=$('chat','r3');
-  const s1=$('chat','s1'), s2=$('chat','s2'), s3=$('chat','s3');
-  const bSpd=$('chat','bSpd');
+  const r1 = $('chat','r1'), r2 = $('chat','r2');
+  const s1 = $('chat','s1'), s2 = $('chat','s2');
+  const bSpd = $('chat','bSpd');
   return PTS.map((_, idx) => {
+    if (idx >= 16) {
+      return { sx: CX, sy: CY, depth: 0, r: .2, opacity: 0, rgb: RGB_F, idx };
+    }
     let ring, pos, count, radius, speed;
-    if (idx < 4)       { ring = 0; pos = idx;        count = 4;  radius = r1; speed = s1; }
-    else if (idx < 16) { ring = 1; pos = idx - 4;    count = 12; radius = r2; speed = s2; }
-    else               { ring = 2; pos = idx - 16;   count = 24; radius = r3; speed = s3; }
-    // Inner diamond rotated 45° so its corners sit between mid-ring dots
-    const offset = ring === 0 ? PI / 4 : 0;
+    if (idx < 4) { ring = 0; pos = idx;     count = 4;  radius = r1; speed = s1; }
+    else         { ring = 1; pos = idx - 4; count = 12; radius = r2; speed = s2; }
+    // Inner diamond aligned to cardinal axes (match original offmenu);
+    // outer ring starts from the top (−π/2) like the original.
+    const offset = ring === 0 ? -PI / 2 : -PI / 2;
     const angle = offset + (pos / count) * PI * 2 + time * speed;
     const x = Math.cos(angle) * radius;
     const y = Math.sin(angle) * radius;
-    // Outward pulse: ring 0 highlights → ring 1 → ring 2 → gap
-    const pulse = (time * bSpd) % 3.5;
-    const hi = pulse < 3 ? Math.max(0, 1 - Math.abs(pulse - ring) * 1.2) : 0;
-    const d = 0.4 + 0.12 * ring + 0.35 * hi;           // outer rings slightly brighter
-    const dotR = Math.max(.4, .85 * (.4 + .6 * d) * (1 + .7 * hi));
-    const op = clamp((.45 + .35 * d) + .4 * hi);
+    // Outward pulse: inner ring highlights, then outer, then a gap
+    const pulse = (time * bSpd) % 2.5;
+    const hi = pulse < 2 ? Math.max(0, 1 - Math.abs(pulse - ring) * 1.4) : 0;
+    const d = 0.7 + 0.3 * hi;                          // front tier → white
+    const dotR = Math.max(.4, .55 * (1 + .7 * hi));
+    const op = clamp(.72 + .28 * hi);
     return { sx: CX + x, sy: CY + y, depth: d,
              r: dotR, opacity: op, rgb: bRGB(d, hi), idx };
   });
