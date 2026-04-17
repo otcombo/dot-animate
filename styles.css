@@ -109,10 +109,17 @@ body {
   flex-direction: column;
   gap: var(--space-group);
 }
-.panel-group { width: 100%; }
+.panel-group { width: 100%; min-width: 0; }
+.panel-group + .panel-group {
+  padding-top: var(--space-group);
+  border-top: 1px solid #1e1e1e;
+}
 .param-grid {
   display: grid; grid-template-columns: 1fr 1fr;
-  gap: 10px 50px;
+  gap: 12px 24px;
+}
+@media (max-width: 680px) {
+  .param-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 480px) {
   .param-grid { grid-template-columns: 1fr; }
@@ -141,7 +148,7 @@ body {
 
 /* ── Panel action buttons (reset/save/load/export) ──────────────── */
 .panel-actions {
-  display: flex; gap: 6px; flex-wrap: wrap;
+  display: flex; gap: 8px; flex-wrap: nowrap;
   align-items: center;
 }
 .panel-actions button {
@@ -161,12 +168,17 @@ body {
   margin-bottom: var(--space-subgroup);
 }
 .section-title-state {
-  margin-bottom: 12px;
+  margin-bottom: var(--space-subgroup);
 }
 .color-inputs {
   display: flex; gap: 14px;
-  margin-top: 8px;
+  margin-top: 10px;
   margin-bottom: 10px; flex-wrap: wrap;
+}
+.panel-empty {
+  color: #444;
+  text-align: center;
+  padding: 6px;
 }
 .c-pr {
   display: flex; align-items: center; gap: 6px;

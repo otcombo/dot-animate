@@ -36,6 +36,7 @@ const btns = STATES.map((st, i) => {
 
 let stateResizeCleanup = null;
 let stateResizeTimeout = null;
+let activeStateName = 'idle';
 
 function animateStateSectionResize(updateUI) {
   if (!stateEl) {
@@ -127,7 +128,6 @@ function renderSliders(parent, stateName) {
 // Global section: always visible above the state-specific section.
 function buildGlobalSection() {
   globalEl.innerHTML = '';
-  globalEl.className = 'panel-group panel-group-global';
 
   const title = document.createElement('div');
   title.className = 'section-title';
@@ -139,7 +139,6 @@ function buildGlobalSection() {
   // Color pickers row
   const colorRow = document.createElement('div');
   colorRow.className = 'color-inputs';
-  colorRow.style.marginTop = '8px';
   [['Front', 'color.front'], ['Mid', 'color.mid'], ['Back', 'color.back']].forEach(([lbl, k]) => {
     const wrap = document.createElement('div');
     wrap.className = 'c-pr';
@@ -175,32 +174,26 @@ function buildGlobalSection() {
 // State section: rebuilt every time a different state is selected.
 function buildStateSection(stateName) {
   stateEl.innerHTML = '';
-  stateEl.className = '';
   if (stateName === 'global') return;
-
-  const paramsGroup = document.createElement('div');
-  paramsGroup.className = 'panel-group panel-group-state';
 
   const title = document.createElement('div');
   title.className = 'section-title section-title-state';
   title.textContent = stateName.toUpperCase() + ' PARAMETERS';
-  paramsGroup.appendChild(title);
+  stateEl.appendChild(title);
 
   const defs = PARAM_DEFS[stateName];
   if (!defs || !defs.length) {
     const n = document.createElement('div');
-    n.style.cssText = 'color:#444;text-align:center;padding:6px';
+    n.className = 'panel-empty';
     n.textContent = 'No parameters for this state';
-    paramsGroup.appendChild(n);
+    stateEl.appendChild(n);
   } else {
-    renderSliders(paramsGroup, stateName);
+    renderSliders(stateEl, stateName);
   }
-  stateEl.appendChild(paramsGroup);
 }
 
-function buildActionSection(stateName) {
+function buildActionSection() {
   actionEl.innerHTML = '';
-  actionEl.className = 'panel-group panel-group-actions';
 
   const acts = document.createElement('div');
   acts.className = 'panel-actions';
@@ -209,57 +202,55 @@ function buildActionSection(stateName) {
     '<span class="spacer"></span>' +
     '<button data-a="export">Export</button>' +
     '<button data-a="import">Import</button>';
-  acts.addEventListener('click', onPanelAction(stateName));
+  acts.addEventListener('click', onPanelAction);
   actionEl.appendChild(acts);
 }
 
-// Action handler factory ────────────────────────────────────────────
-function onPanelAction(stateName) {
-  return e => {
-    const a = e.target.dataset.a;
-    if (!a) return;
+// Action handler ────────────────────────────────────────────────────
+function onPanelAction(e) {
+  const a = e.target.dataset.a;
+  if (!a) return;
 
-    if (a === 'reset') {
-      PARAM_DEFS.global.forEach(p => {
-        CFG['global.' + p.key] = p.default;
-      });
-      CFG['color.front'] = '#FFFFFF';
-      CFG['color.mid']   = '#888888';
-      CFG['color.back']  = '#333333';
-      applyPalette();
+  if (a === 'reset') {
+    PARAM_DEFS.global.forEach(p => {
+      CFG['global.' + p.key] = p.default;
+    });
+    CFG['color.front'] = '#FFFFFF';
+    CFG['color.mid']   = '#888888';
+    CFG['color.back']  = '#333333';
+    applyPalette();
 
-      (PARAM_DEFS[stateName] || []).forEach(p => {
-        CFG[stateName + '.' + p.key] = p.default;
-      });
-      buildGlobalSection();
-      animateStateSectionResize(() => {
-        buildStateSection(stateName);
-      });
-      persistCFG();
-    }
+    (PARAM_DEFS[activeStateName] || []).forEach(p => {
+      CFG[activeStateName + '.' + p.key] = p.default;
+    });
+    buildGlobalSection();
+    animateStateSectionResize(() => {
+      buildStateSection(activeStateName);
+    });
+    persistCFG();
+  }
 
-    if (a === 'export') {
-      const ps = JSON.parse(localStorage.getItem('dotanim_presets') || '{}');
-      navigator.clipboard
-        .writeText(JSON.stringify(ps, null, 2))
-        .then(() => alert('Copied all presets to clipboard'));
-    }
+  if (a === 'export') {
+    const ps = JSON.parse(localStorage.getItem('dotanim_presets') || '{}');
+    navigator.clipboard
+      .writeText(JSON.stringify(ps, null, 2))
+      .then(() => alert('Copied all presets to clipboard'));
+  }
 
-    if (a === 'import') {
-      const txt = prompt('Paste JSON presets:');
-      if (!txt) return;
-      try {
-        const parsed = JSON.parse(txt);
-        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-          throw new Error('Invalid preset payload');
-        }
-        localStorage.setItem('dotanim_presets', JSON.stringify(parsed));
-        alert('Imported all presets');
-      } catch (err) {
-        alert('Invalid JSON');
+  if (a === 'import') {
+    const txt = prompt('Paste JSON presets:');
+    if (!txt) return;
+    try {
+      const parsed = JSON.parse(txt);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('Invalid preset payload');
       }
+      localStorage.setItem('dotanim_presets', JSON.stringify(parsed));
+      alert('Imported all presets');
+    } catch (err) {
+      alert('Invalid JSON');
     }
-  };
+  }
 }
 
 // =====================================================================
@@ -343,6 +334,7 @@ function switchTo(i) {
   fromSnapshot = curPhys;
   fromIdx = toIdx;
   toIdx = i;
+  activeStateName = STATES[i].name;
   progress = 0;
   trStart = null;
 
@@ -351,7 +343,6 @@ function switchTo(i) {
   animateStateSectionResize(() => {
     buildStateSection(STATES[i].name);
   });
-  buildActionSection(STATES[i].name);
 }
 
 trigger.addEventListener('click', () => switchTo((toIdx + 1) % STATES.length));
@@ -359,7 +350,7 @@ trigger.addEventListener('click', () => switchTo((toIdx + 1) % STATES.length));
 // ── Initial panel render ────────────────────────────────────────────
 buildGlobalSection();
 buildStateSection('idle');
-buildActionSection('idle');
+buildActionSection();
 
 // =====================================================================
 //  Animation loop

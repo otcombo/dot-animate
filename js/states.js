@@ -305,11 +305,11 @@ function stateRain(time) {
 
 // 13 ── INFINITE: lemniscate infinity loop + traveling pulse ─────
 //      Math: x=sin θ, y=sin 2θ/2 — Lissajous 1:2 figure.
-//      Uses 20 dots on the curve (20 hidden at center) so spacing
-//      along the curve matches thinking's sphere density (~3–4 svg
-//      units between dots). Avoids the pile-up from 40 points on
-//      the self-intersecting lemniscate.
-const INFINITE_N = 20;
+//      17 visible dots on the curve (23 hidden at center) — spacing
+//      ~4 svg units between dots at default scale=9 (curve length ≈ 68).
+//      Depth is compressed into [mid, front] tiers only (no dark/back)
+//      so every dot contributes to the visible shape.
+const INFINITE_N = 17;
 function stateInfinite(time) {
   const lp=$('infinite','loop'), ys=$('infinite','yScale'), zd=$('infinite','zDepth');
   const ro=$('infinite','rot'), ti=$('infinite','tilt'), sc=$('infinite','scale');
@@ -325,11 +325,12 @@ function stateInfinite(time) {
     const rx = x * c1 + z * s1, rz = -x * s1 + z * c1; x = rx; z = rz;
     const ct = Math.cos(ti), st = Math.sin(ti);
     const ry = y * ct - z * st; z = y * st + z * ct; y = ry;
-    const d = clamp((z + 1) / 2);
+    // Compress depth to [0.55, 0.85] — keeps every dot at mid tier or
+    // brighter so the shape reads clearly (no dots fade into the bg)
+    const d = clamp(0.7 + z * 0.3);
     const pT = (time * ps) % 1;
     const dist = Math.abs(idx / INFINITE_N - pT), wrap = Math.min(dist, 1 - dist);
     const hi = wrap < pw ? (1 - wrap / pw) ** 2 : 0;
-    // Thinking-style size/opacity so visible dots feel comparable to sphere states
     const r = Math.max(.4, .95 * (.4 + .6 * d) * (1 + .7 * hi));
     const op = clamp((.2 + .8 * d) * .9 + .6 * hi);
     return { sx: x * sc + CX, sy: y * sc + CY, depth: d,
