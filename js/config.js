@@ -12,9 +12,9 @@ const PARAM_DEFS = {
     { key: 'bandGlow', label: 'Band glow',    min: 0,  max: 2,    step: .05,  default: 1 },
   ],
   idle: [
-    { key: 'r1',       label: 'Inner radius',  min: 1.5, max: 5,   step: .2,   default: 3 },
-    { key: 'r2',       label: 'Outer radius',  min: 6,   max: 10,  step: .2,   default: 9 },
-    { key: 'depthAmt', label: 'Depth variance',min: 0,   max: .5,  step: .05,  default: .4 },
+    { key: 'r1',       label: 'Inner radius',  min: 1.5, max: 5,   step: .1,   default: 4.3 },
+    { key: 'r2',       label: 'Outer radius',  min: 6,   max: 10,  step: .2,   default: 8 },
+    { key: 'depthAmt', label: 'Depth variance',min: 0,   max: .5,  step: .05,  default: 0 },
   ],
   thinking: [
     { key: 'spin',     label: 'Spin speed',   min: .2, max: 4,    step: .1,   default: 1.4 },
