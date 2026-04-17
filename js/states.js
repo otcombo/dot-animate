@@ -374,6 +374,117 @@ function stateChat(time) {
   });
 }
 
+// 16 ── MENU: nav-toggle style, auto-cycling 3×3 dots ⟷ X morph ────
+//      Self-cycles on a period: holds dots (idle), snaps to X (click),
+//      holds X, morphs back. Captures the hamburger-menu → close-icon
+//      transform that UI kits like offmenu use.
+//
+//      Dot → X mapping uses a 45° CW rotation of edge-mid dots so
+//      they collapse inward to arm midpoints. Corners and center stay
+//      put. Motion paths are short and symmetric.
+const _MENU_DOTS = [
+  [-1,-1], [0,-1], [1,-1],
+  [-1, 0], [0, 0], [1, 0],
+  [-1, 1], [0, 1], [1, 1],
+];
+const _MENU_X = [
+  [-1,-1], [.5,-.5], [1,-1],    // top row: TL stays, top-mid → TR arm, TR stays
+  [-.5,-.5], [0, 0], [.5,.5],   // mid row: mid-L → TL arm, center stays, mid-R → BR arm
+  [-1, 1], [-.5,.5], [1, 1],    // bot row: BL stays, bot-mid → BL arm, BR stays
+];
+function stateMenu(time) {
+  const sp     = $('menu','sp');
+  const period = $('menu','period');
+  const idleH  = $('menu','idleHold');
+  const xH     = $('menu','xHold');
+
+  // Cycle phase m ∈ [0,1], with plateaus at 0 (dots) and 1 (X).
+  //   0 ──idle hold──┐ morph ┌──X hold──┐ morph ┌── 1
+  const phase  = (time / period) % 1;
+  const morph  = (1 - idleH - xH) / 2;              // fraction on each side
+  let m;
+  if      (phase < idleH)               m = 0;
+  else if (phase < idleH + morph)       m = (phase - idleH) / morph;
+  else if (phase < idleH + morph + xH)  m = 1;
+  else                                   m = 1 - (phase - idleH - morph - xH) / morph;
+  m = m * m * (3 - 2 * m);                           // smoothstep eases ends
+
+  // Brief highlight flash at the midpoint of each morph transition
+  const hiT = Math.abs(m - .5) < .4 ? 1 - Math.abs(m - .5) / .4 : 0;
+  const hi  = hiT * .8;
+
+  return PTS.map((_, idx) => {
+    if (idx >= 9) return { sx: CX, sy: CY, depth: 0, r: .2, opacity: 0, rgb: RGB_F, idx };
+    const a = _MENU_DOTS[idx], b = _MENU_X[idx];
+    const x = lerp(a[0], b[0], m) * sp;
+    const y = lerp(a[1], b[1], m) * sp;
+    const d = 0.7 + 0.2 * hi;
+    const r = Math.max(.4, .6 * (1 + .3 * hi));
+    const op = clamp(.82 + .12 * hi);
+    return { sx: CX + x, sy: CY + y, depth: d, r, opacity: op, rgb: bRGB(d, hi), idx };
+  });
+}
+
+// 17 ── AVATAR: chat-icon style, auto-cycling idle ⟷ thinking ─────
+//      Holds static diamond+ring (idle), fades in a "thinking"
+//      phase where the rings counter-rotate and a traveling pulse
+//      sweeps the outer ring while the inner diamond breathes.
+//      Fades back to idle. Captures a chat-assistant's idle → active
+//      → idle lifecycle.
+function stateAvatar(time) {
+  const r1      = $('avatar','r1');
+  const r2      = $('avatar','r2');
+  const period  = $('avatar','period');
+  const thinkSp = $('avatar','thinkSpd');
+  const pulseSp = $('avatar','pulseSpd');
+
+  // Cycle: 35% idle, 10% fade-in, 45% thinking, 10% fade-out
+  const phase = (time / period) % 1;
+  let m;
+  if      (phase < .35) m = 0;
+  else if (phase < .45) m = (phase - .35) / .1;
+  else if (phase < .9)  m = 1;
+  else                  m = 1 - (phase - .9) / .1;
+  m = m * m * (3 - 2 * m);
+
+  return PTS.map((_, idx) => {
+    if (idx >= 16) return { sx: CX, sy: CY, depth: 0, r: .2, opacity: 0, rgb: RGB_F, idx };
+
+    let ring, pos, count, radius;
+    if (idx < 4) { ring = 0; pos = idx;     count = 4;  radius = r1; }
+    else         { ring = 1; pos = idx - 4; count = 12; radius = r2; }
+
+    const idleA = -PI / 2 + (pos / count) * PI * 2;
+    // Thinking-mode rotation: inner spins CW faster, outer CCW slower
+    const spd = ring === 0 ? thinkSp * 1.5 : -thinkSp * 0.7;
+    const angle = idleA + time * spd * m;
+
+    // Inner diamond breathes in thinking mode
+    const breath = ring === 0 ? (1 + 0.18 * Math.sin(time * pulseSp * 1.5) * m) : 1;
+    const rEff = radius * breath;
+
+    const x = Math.cos(angle) * rEff;
+    const y = Math.sin(angle) * rEff;
+
+    // Band: outer ring gets a traveling comet, inner a phase pulse
+    let hi = 0;
+    if (m > 0.15) {
+      if (ring === 1) {
+        const refA = -PI / 2 + time * pulseSp;
+        const diff = Math.atan2(Math.sin(angle - refA), Math.cos(angle - refA));
+        hi = Math.abs(diff) < 0.7 ? ((1 - Math.abs(diff) / 0.7) ** 2) * m : 0;
+      } else {
+        hi = (0.5 + 0.5 * Math.sin(time * pulseSp * 2 + idx * 1.57)) * m * 0.6;
+      }
+    }
+
+    const d = 0.7 + 0.3 * hi;
+    const dotR = Math.max(.4, .55 * (1 + .6 * hi));
+    const op = clamp(.75 + .25 * hi);
+    return { sx: CX + x, sy: CY + y, depth: d, r: dotR, opacity: op, rgb: bRGB(d, hi), idx };
+  });
+}
+
 // ── State registry ───────────────────────────────────────────────
 const STATES = [
   { name: 'idle',     fn: stateIdle     },
@@ -392,6 +503,8 @@ const STATES = [
   { name: 'figure8',  fn: stateFigure8  },
   { name: 'grid',     fn: stateGrid     },
   { name: 'chat',     fn: stateChat     },
+  { name: 'menu',     fn: stateMenu     },
+  { name: 'avatar',   fn: stateAvatar   },
 ];
 
 // ── Particle blend for smooth transitions ────────────────────────

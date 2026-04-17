@@ -125,6 +125,21 @@ const PARAM_DEFS = {
     { key: 's2',       label: 'Outer speed',  min: -2,   max: 2,   step: .05,  default: -.15 },
     { key: 'bSpd',     label: 'Pulse speed',  min: .1,   max: 2,   step: .05,  default: .7 },
   ],
+  // offmenu nav-toggle — auto-cycling dots ⟷ X morph (hamburger menu ⟷ close)
+  menu: [
+    { key: 'sp',       label: 'Spacing',      min: 3,    max: 8,   step: .2,   default: 4.5 },
+    { key: 'period',   label: 'Cycle time',   min: 2,    max: 8,   step: .5,   default: 4 },
+    { key: 'idleHold', label: 'Idle hold %',  min: .2,   max: .6,  step: .05,  default: .4 },
+    { key: 'xHold',    label: 'X hold %',     min: .2,   max: .6,  step: .05,  default: .4 },
+  ],
+  // offmenu chat-icon — auto-cycling idle (static) ⟷ thinking (rotating+pulsing)
+  avatar: [
+    { key: 'r1',       label: 'Inner radius', min: 1.5,  max: 5,   step: .2,   default: 3 },
+    { key: 'r2',       label: 'Outer radius', min: 6,    max: 10,  step: .2,   default: 9 },
+    { key: 'period',   label: 'Cycle time',   min: 3,    max: 10,  step: .5,   default: 5.5 },
+    { key: 'thinkSpd', label: 'Think speed',  min: .3,   max: 3,   step: .1,   default: 1.2 },
+    { key: 'pulseSpd', label: 'Pulse speed',  min: .3,   max: 3,   step: .1,   default: 1.5 },
+  ],
 };
 
 // ── Color presets (front, mid, back) ────────────────────────────────
