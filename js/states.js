@@ -171,9 +171,16 @@ function stateHelix(time) {
 //       pulse > 0  → star deformation (spikes outward, valleys inward)
 //       pulse < 0  → uniform contraction (everything shrinks together)
 //     Cycle: sphere → expanded star → sphere → small ball → sphere.
-//     Pulse curve is easeOutBack per half-cycle (fast transition +
-//     brief overshoot past the target then settle) — "bouncy" feel
-//     instead of smooth sine.
+//     Pulse uses a custom spring curve per half-cycle so the shape
+//     overshoots its target by ~20%, swings back slightly, settles —
+//     giving a visible bounce instead of a smooth sine glide.
+//
+//     spring(t) = 1 − e^(−4t) · cos(2.5π · t)
+//       t=0 → 0       (start)
+//       t≈.4 → 1.20    (20% overshoot — "hits the wall")
+//       t≈.6 → 1.04    (swings back)
+//       t≈.8 → 0.96    (small undershoot in the other direction)
+//       t=1 → 1        (settled)
 function stateNova(time) {
   const ro=$('nova','rot'), ti=$('nova','tilt');
   const pf=$('nova','pFreq'), pr=$('nova','pRange');
@@ -182,16 +189,16 @@ function stateNova(time) {
   const a = time * ro, cY = Math.cos(a), sY = Math.sin(a);
   const cX = Math.cos(ti), sX = Math.sin(ti);
 
-  // Bouncy pulse: each half-cycle uses easeOutBack (fast → overshoot → settle)
-  // instead of a smooth sine wave. Alternates direction each half.
+  // Custom spring-out curve per half-cycle → bouncy pulse
   const period = (2 * PI) / pf;
   const cT = ((time % period) + period) % period;              // 0 → period
   const halfT = cT % (period / 2);                              // 0 → period/2
   const goingDown = cT < period / 2;                            // true: +1 → −1
   const t01 = halfT / (period / 2);                             // 0 → 1
-  const c1 = 1.4, c3 = c1 + 1;
-  const eob = 1 + c3 * (t01 - 1) ** 3 + c1 * (t01 - 1) ** 2;    // easeOutBack (peaks past 1)
-  const pulse = goingDown ? 1 - 2 * eob : -1 + 2 * eob;         // −1.1 … +1.1 w/ bounce
+  const e = t01 >= 1 ? 1 :
+            1 - Math.exp(-4 * t01) * Math.cos(2.5 * PI * t01);  // overshoots past 1
+  // Map e ∈ [0, ~1.2] to pulse ∈ [start ±1, target ±1 (past ±1.4 at bounce peak)]
+  const pulse = goingDown ? 1 - 2 * e : -1 + 2 * e;
 
   return PTS.map((pt, idx) => {
     const lon = Math.atan2(pt.z, pt.x);
