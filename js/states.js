@@ -7,18 +7,33 @@
 //              config.js ($ helper / CFG)
 // =====================================================================
 
-// 0 ── IDLE: static hex grid ──────────────────────────────────────────
+// 0 ── IDLE: static diamond + ring (avatar layout) w/ depth-varied sizes
+//      16 visible dots arranged as avatar's 4-inner-diamond + 12-outer-
+//      ring. Each dot's depth is derived from its vertical position
+//      (bottom = closer/larger, top = farther/smaller), feeding into
+//      thinking's standard size/opacity/color formulas so dots have
+//      organic size variation even while fully static.
 function stateIdle() {
-  const dr = $('idle','dotR'), dop = $('idle','dotOp'), sp = $('idle','gridSp');
-  const sf = sp / 2.8;                                   // rescale factor
+  const r1      = $('idle','r1');
+  const r2      = $('idle','r2');
+  const depthAmt = $('idle','depthAmt');
   return PTS.map((_, idx) => {
-    const s = slot[idx];
-    if (s >= 0) {
-      const g = GRID[s];
-      return { sx: CX + (g.x - CX) * sf, sy: CY + (g.y - CY) * sf,
-               depth: .8, r: dr, opacity: dop, rgb: RGB_F, idx };
+    if (idx >= 16) {
+      return { sx: CX, sy: CY, depth: 0, r: .2, opacity: 0, rgb: RGB_F, idx };
     }
-    return { sx: CX, sy: CY, depth: 0, r: .2, opacity: 0, rgb: RGB_F, idx };
+    let pos, count, radius;
+    if (idx < 4) { pos = idx;     count = 4;  radius = r1; }
+    else         { pos = idx - 4; count = 12; radius = r2; }
+    const angle = -PI / 2 + (pos / count) * PI * 2;
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+    // Pseudo-depth from y-position — top = back (small), bottom = front (big)
+    const d = clamp(0.55 + Math.sin(angle) * depthAmt);
+    // Thinking's size/opacity formulas (depth → organic variation)
+    const r  = Math.max(.35, .95 * (.4 + .6 * d));
+    const op = clamp((.3 + .7 * d) * .9);
+    return { sx: CX + x, sy: CY + y, depth: d,
+             r, opacity: op, rgb: dRGB(d), idx };
   });
 }
 
