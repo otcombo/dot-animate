@@ -58,7 +58,7 @@ const PARAM_DEFS = {
     { key: 'rot',      label: 'Rotation',     min: 0,   max: 1.2, step: .05,  default: .4 },
     { key: 'tilt',     label: 'Tilt',         min: 0,   max: 1,   step: .05,  default: .2 },
     { key: 'pFreq',    label: 'Pulse freq',   min: .3,  max: 3,   step: .1,   default: 1.0 },
-    { key: 'pRange',   label: 'Star depth',   min: .05, max: .6,  step: .02,  default: .35 },
+    { key: 'pRange',   label: 'Amplitude',    min: .05, max: .5,  step: .02,  default: .25 },
     { key: 'spikes',   label: 'Spike count',  min: 2,   max: 8,   step: 1,    default: 4 },
     { key: 'starRot',  label: 'Star rotation',min: 0,   max: 2,   step: .05,  default: .25 },
     { key: 'bSpd',     label: 'Band speed',   min: .3,  max: 3.5, step: .1,   default: 1.3 },

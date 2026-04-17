@@ -203,10 +203,12 @@ function stateNova(time) {
   return PTS.map((pt, idx) => {
     const lon = Math.atan2(pt.z, pt.x);
     const spike = Math.cos(sp * lon + time * sr);              // −1 → +1
-    // Positive half → spike out / valley in (star)
-    // Negative half → uniform shrink (1.6× deeper than the star amplitude)
+    // Positive (expansion): uniform grow (0.3·pulse·pr) + star modulation
+    //                       (0.2·pulse·pr·spike). Whole shape bounces
+    //                       outward, with star tips poking out a bit further.
+    // Negative (contraction): uniform shrink (1.6·pulse·pr), no star.
     const scale = pulse > 0
-      ? 1 + pulse * pr * spike
+      ? 1 + pulse * pr * (0.3 + 0.2 * spike)
       : 1 + pulse * pr * 1.6;
     const c = rot({ x: pt.x*scale, y: pt.y*scale, z: pt.z*scale },
                   cY, sY, cX, sX);
