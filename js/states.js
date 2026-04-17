@@ -177,7 +177,11 @@ function stateNova(time) {
     const delay = lon * .4 + pt.y * .7;
     const pulse = Math.sin(time * pf + delay);
     const scale = (.65 + pr) + pr * pulse;
-    const c = rot(pt, cY, sY, cX, sX), d = clamp((c.z * scale + 1) / 2);
+    // Depth stays pure orientation — NOT scaled by `scale` — so dots keep
+    // their size variety (front = big, back = small) whether the sphere is
+    // expanded or contracted. Previously (c.z * scale) collapsed all dots
+    // toward mid-depth when the sphere shrank, making them uniformly small.
+    const c = rot(pt, cY, sY, cX, sX), d = clamp((c.z + 1) / 2);
     const bandY = Math.sin(time * bs);
     const bandDist = Math.abs(pt.y - bandY);
     const hi = bandDist < bw ? (1 - bandDist / bw) ** 1.5 : 0;
