@@ -36,7 +36,7 @@
   .nav .dot.on { background: #74B8D4; transform: scale(1.4); }
   .buttons {
     display: flex; flex-wrap: wrap; gap: 5px;
-    justify-content: center; max-width: 420px; margin-top: 4px;
+    justify-content: center; max-width: 420px;
   }
   .buttons button {
     background: #161616; color: #555;
@@ -47,10 +47,49 @@
     transition: all .2s;
   }
   .buttons button:hover { border-color: #74B8D4; color: #888; }
-  .buttons button.on {
-    background: #74B8D4; color: #0a0a0a;
-    border-color: #74B8D4;
+  .buttons button.on { background: #74B8D4; color: #0a0a0a; border-color: #74B8D4; }
+
+  /* ── Parameter Panel ── */
+  #panel {
+    width: 440px; max-width: 95vw;
+    background: #131313; border: 1px solid #1e1e1e;
+    border-radius: 14px; padding: 14px 16px 12px;
+    margin-top: 2px;
+    font-family: 'SF Mono','Fira Code',monospace;
+    font-size: 11px; color: #888;
   }
+  .param-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px 20px;
+  }
+  @media (max-width: 480px) { .param-grid { grid-template-columns: 1fr; } }
+  .pr { display: flex; align-items: center; gap: 8px; }
+  .pr-label {
+    width: 90px; flex-shrink: 0; color: #555;
+    font-size: 10px; letter-spacing: .03em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .pr input[type=range] {
+    flex: 1; height: 3px; min-width: 60px;
+    -webkit-appearance: none; appearance: none;
+    background: #2a2a2a; border-radius: 2px; outline: none;
+  }
+  .pr input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 12px; height: 12px;
+    border-radius: 50%; background: #74B8D4; cursor: pointer;
+  }
+  .pr-val { width: 36px; text-align: right; color: #74B8D4; font-size: 10px; }
+  .panel-actions {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    margin-top: 10px; padding-top: 8px; border-top: 1px solid #1e1e1e;
+  }
+  .panel-actions button {
+    background: #1a1a1a; color: #555; border: 1px solid #2a2a2a;
+    border-radius: 8px; padding: 3px 10px; font-size: 10px;
+    font-family: inherit; cursor: pointer; transition: all .2s;
+  }
+  .panel-actions button:hover { border-color: #74B8D4; color: #aaa; }
+  .panel-actions .spacer { flex: 1; }
 </style>
 </head>
 <body>
@@ -61,31 +100,28 @@
   <svg id="ball" width="52" height="52" viewBox="0 0 22 22"></svg>
 </div>
 <div class="buttons" id="buttons"></div>
+<div id="panel"></div>
 
 <script>
 // =====================================================================
-//  Dot Animate — 14 states
-//  idle thinking pulse swirl ripple orbit helix nova
-//  knot torus pendulum wobble rain figure8
+//  Dot Animate — 14 parameterized states with live-edit panel
 // =====================================================================
 
-// ---------- Palette ----------
-const RGB_F = [116,184,212], RGB_M = [60,120,168], RGB_B = [26,40,64];
+const PI=Math.PI, PHI=PI*(3-Math.sqrt(5)), N=40, CX=11, CY=11;
+const RGB_F=[116,184,212], RGB_M=[60,120,168], RGB_B=[26,40,64];
 
-// ---------- Fibonacci sphere: 40 points ----------
-const PI = Math.PI, PHI = PI*(3-Math.sqrt(5)), N = 40;
-const PTS = Array.from({length:N},(_,i)=>{
-  const y=1-(2*i)/(N-1), r=Math.sqrt(1-y*y), t=PHI*i;
-  return {x:Math.cos(t)*r,y,z:Math.sin(t)*r};
+// ── Fibonacci sphere ─────────────────────────────────────────────────
+const PTS=Array.from({length:N},(_,i)=>{
+  const y=1-(2*i)/(N-1),r=Math.sqrt(1-y*y),t=PHI*i;
+  return{x:Math.cos(t)*r,y,z:Math.sin(t)*r};
 });
 
-// ---------- Idle hex grid ----------
-const SP=2.8, HH=SP*.75, CX=11, CY=11;
-const ROWS=[[-0.5,0.5],[-1,0,1],[-1.5,-0.5,0.5,1.5],[-1,0,1],[-0.5,0.5]];
+// ── Idle hex grid ────────────────────────────────────────────────────
+const SP=2.8,HH=SP*.75;
+const ROWDEF=[[-0.5,0.5],[-1,0,1],[-1.5,-0.5,0.5,1.5],[-1,0,1],[-0.5,0.5]];
 const GRID=[];
-ROWS.forEach((ox,ri)=>{const y=CY+(ri-2)*HH;ox.forEach(o=>GRID.push({x:CX+o*SP,y}));});
+ROWDEF.forEach((ox,ri)=>{const y=CY+(ri-2)*HH;ox.forEach(o=>GRID.push({x:CX+o*SP,y}));});
 GRID.sort((a,b)=>a.y-b.y||a.x-b.x);
-
 function rot(pt,cY,sY,cX,sX){
   const rx=pt.x*cY+pt.z*sY,rz=-pt.x*sY+pt.z*cY;
   return{x:rx,y:pt.y*cX-rz*sX,z:pt.y*sX+rz*cX};
@@ -96,86 +132,204 @@ top14.sort((a,b)=>{const ca=rot(PTS[a.idx],1,0,cX0,sX0),cb=rot(PTS[b.idx],1,0,cX
 const slot=new Int8Array(N).fill(-1);
 top14.forEach((p,i)=>slot[p.idx]=i);
 
-// ---------- Helpers ----------
+// ── Helpers ──────────────────────────────────────────────────────────
 const lerp=(a,b,t)=>a+(b-a)*t, clamp=v=>v<0?0:v>1?1:v;
 const easeO3=t=>1-(1-t)**3, easeIO3=t=>t<.5?4*t*t*t:1-(-2*t+2)**3/2;
 const rgbStr=c=>`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
 const lerpC=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
 const dRGB=d=>d>.65?RGB_F:d>.4?RGB_M:RGB_B;
-// Band color helper: blend toward front when highlighted
 const bRGB=(d,hi)=>hi>.3?lerpC(dRGB(d),RGB_F,hi):dRGB(d);
+const cRGB=(d,hi)=>{const b=d>.5?RGB_M:RGB_B;return hi>.15?lerpC(b,RGB_F,hi):b;}; // curve states
 
 // =====================================================================
-//  11 STATE FUNCTIONS
+//  PARAMETER DEFINITIONS — { key, label, min, max, step, default }
+// =====================================================================
+const PARAM_DEFS={
+idle:[
+  {key:'dotR',    label:'Dot radius',  min:.2,max:1.2,step:.05,default:.62},
+  {key:'dotOp',   label:'Dot opacity', min:.2,max:1,  step:.05,default:.88},
+],
+thinking:[
+  {key:'spin',    label:'Spin speed',  min:.2,max:4,  step:.1, default:1.4},
+  {key:'tilt',    label:'Tilt',        min:0, max:1,  step:.05,default:.2},
+  {key:'bandSpd', label:'Band speed',  min:.5,max:5,  step:.1, default:2.2},
+  {key:'bandW',   label:'Band width',  min:.1,max:1.2,step:.05,default:.5},
+  {key:'bandAmp', label:'Band sweep',  min:.2,max:1,  step:.05,default:.85},
+],
+pulse:[
+  {key:'rot',     label:'Rotation',    min:0, max:1.2,step:.05,default:.35},
+  {key:'bAmp',    label:'Breath amp',  min:0, max:.4, step:.02,default:.14},
+  {key:'bFreq',   label:'Breath freq', min:.5,max:4,  step:.1, default:1.8},
+  {key:'tilt',    label:'Tilt',        min:0, max:.8, step:.05,default:.3},
+  {key:'waveD',   label:'Wave depth',  min:.5,max:5,  step:.1, default:2},
+],
+swirl:[
+  {key:'spd',     label:'Base speed',  min:.4,max:3.5,step:.1, default:1.6},
+  {key:'twist',   label:'Twist amount',min:0, max:1.5,step:.1, default:.8},
+  {key:'tilt',    label:'Tilt',        min:0, max:1,  step:.05,default:.38},
+  {key:'bSpd',    label:'Spiral speed',min:.5,max:5,  step:.1, default:2.8},
+  {key:'bThresh', label:'Band thresh', min:.3,max:.9, step:.05,default:.7},
+],
+ripple:[
+  {key:'rot',     label:'Rotation',    min:0, max:.5, step:.02,default:.18},
+  {key:'wFreq',   label:'Wave count',  min:1, max:7,  step:.1, default:3.5},
+  {key:'wSpd',    label:'Wave speed',  min:.5,max:5,  step:.1, default:2.8},
+  {key:'wAmp',    label:'Wave amp',    min:.02,max:.4,step:.02,default:.16},
+  {key:'crest',   label:'Crest thresh',min:.5,max:.95,step:.01,default:.78},
+],
+orbit:[
+  {key:'r1',      label:'Ring 1 speed',min:-3,max:3,  step:.1, default:1.3},
+  {key:'r2',      label:'Ring 2 speed',min:-3,max:3,  step:.1, default:-.85},
+  {key:'r3',      label:'Ring 3 speed',min:-3,max:3,  step:.1, default:.6},
+  {key:'comet',   label:'Comet speed', min:1, max:3,  step:.1, default:1.6},
+  {key:'cometW',  label:'Comet width', min:.2,max:2,  step:.1, default:.8},
+],
+helix:[
+  {key:'turns',   label:'Turns',       min:.5,max:2.5,step:.1, default:1.2},
+  {key:'spin',    label:'Spin speed',  min:.2,max:2.5,step:.1, default:.9},
+  {key:'pSpd',    label:'Pulse speed', min:.1,max:1.5,step:.1, default:.5},
+  {key:'pW',      label:'Pulse width', min:.04,max:.25,step:.01,default:.12},
+  {key:'radX',    label:'Width',       min:3, max:9,  step:.5, default:6.5},
+  {key:'radY',    label:'Height',      min:4, max:10, step:.5, default:8.5},
+],
+nova:[
+  {key:'rot',     label:'Rotation',    min:0, max:1.2,step:.05,default:.4},
+  {key:'pFreq',   label:'Pulse freq',  min:.5,max:3.5,step:.1, default:1.6},
+  {key:'pRange',  label:'Pulse range', min:.1,max:.5, step:.02,default:.35},
+  {key:'bSpd',    label:'Band speed',  min:.3,max:3.5,step:.1, default:1.3},
+  {key:'bW',      label:'Band width',  min:.1,max:.6, step:.02,default:.28},
+],
+knot:[
+  {key:'rot',     label:'Rotation',    min:.1,max:1.5,step:.05,default:.45},
+  {key:'tilt',    label:'Tilt',        min:0, max:1,  step:.05,default:.35},
+  {key:'pSpd',    label:'Pulse speed', min:.05,max:1, step:.05,default:.3},
+  {key:'pW',      label:'Pulse width', min:.03,max:.2,step:.01,default:.09},
+  {key:'scale',   label:'Scale',       min:5, max:11, step:.5, default:9.5},
+],
+torus:[
+  {key:'R',       label:'Major radius',min:.3,max:1,  step:.05,default:.65},
+  {key:'r',       label:'Tube radius', min:.1,max:.5, step:.02,default:.28},
+  {key:'spin',    label:'Spin speed',  min:.1,max:1.5,step:.05,default:.55},
+  {key:'tilt',    label:'Tilt',        min:.1,max:1.2,step:.05,default:.55},
+  {key:'bSpd',    label:'Band speed',  min:.5,max:4,  step:.1, default:1.8},
+  {key:'bW',      label:'Band width',  min:.2,max:2,  step:.1, default:.8},
+],
+pendulum:[
+  {key:'base',    label:'Base freq',   min:.1,max:.8, step:.02,default:.32},
+  {key:'step',    label:'Freq spread', min:.005,max:.05,step:.002,default:.018},
+  {key:'amp',     label:'Swing amp',   min:.2,max:1,  step:.05,default:.78},
+  {key:'bSpd',    label:'Band speed',  min:.2,max:2,  step:.1, default:.7},
+  {key:'bW',      label:'Band width',  min:.1,max:.5, step:.02,default:.25},
+],
+wobble:[
+  {key:'spin',    label:'Spin speed',  min:.3,max:3,  step:.1, default:1.2},
+  {key:'pAmp',    label:'Precession',  min:.1,max:1.2,step:.05,default:.6},
+  {key:'pFreq',   label:'Prec. freq',  min:.05,max:.8,step:.05,default:.3},
+  {key:'bSpd',    label:'Band speed',  min:.5,max:4,  step:.1, default:1.8},
+  {key:'bRange',  label:'Band range',  min:.1,max:.8, step:.05,default:.55},
+  {key:'bW',      label:'Band width',  min:.1,max:.6, step:.05,default:.3},
+],
+rain:[
+  {key:'spd',     label:'Fall speed',  min:.1,max:1,  step:.05,default:.4},
+  {key:'var',     label:'Speed var',   min:0, max:.3, step:.02,default:.12},
+  {key:'drift',   label:'Drift',       min:0, max:.2, step:.02,default:.08},
+  {key:'bSpd',    label:'Band speed',  min:.1,max:1.5,step:.05,default:.55},
+  {key:'bW',      label:'Band width',  min:.05,max:.5,step:.02,default:.25},
+],
+figure8:[
+  {key:'loop',    label:'Loop speed',  min:.1,max:1.2,step:.05,default:.45},
+  {key:'yScale',  label:'Y scale',     min:.2,max:.9, step:.05,default:.55},
+  {key:'zDepth',  label:'Z depth',     min:.1,max:.6, step:.05,default:.35},
+  {key:'rot',     label:'Rotation',    min:0, max:.8, step:.05,default:.25},
+  {key:'pSpd',    label:'Pulse speed', min:.1,max:1,  step:.05,default:.35},
+  {key:'pW',      label:'Pulse width', min:.03,max:.2,step:.01,default:.1},
+],
+};
+
+// ── Config store ─────────────────────────────────────────────────────
+const CFG={};
+for(const[st,ps]of Object.entries(PARAM_DEFS))
+  for(const p of ps) CFG[st+'.'+p.key]=p.default;
+
+// Restore from localStorage
+try{const s=JSON.parse(localStorage.getItem('dotanim_cfg'));if(s)Object.assign(CFG,s);}catch(e){}
+
+const $=(st,k)=>CFG[st+'.'+k];
+
+let _saveT;
+function persistCFG(){clearTimeout(_saveT);_saveT=setTimeout(()=>localStorage.setItem('dotanim_cfg',JSON.stringify(CFG)),300);}
+
+// =====================================================================
+//  14 PARAMETERIZED STATE FUNCTIONS
 // =====================================================================
 
-// 0 ── IDLE ───────────────────────────────────────────────────────────
 function stateIdle(){
+  const dr=$('idle','dotR'),dop=$('idle','dotOp');
   return PTS.map((_,idx)=>{
     const s=slot[idx];
-    if(s>=0){const g=GRID[s];return{sx:g.x,sy:g.y,depth:.8,r:.62,opacity:.88,rgb:RGB_F,idx};}
+    if(s>=0){const g=GRID[s];return{sx:g.x,sy:g.y,depth:.8,r:dr,opacity:dop,rgb:RGB_F,idx};}
     return{sx:CX,sy:CY,depth:0,r:.2,opacity:0,rgb:RGB_F,idx};
   });
 }
 
-// 1 ── THINKING: Y-spin + horizontal band ─────────────────────────────
 function stateThinking(time){
-  const a=time*1.4,cY=Math.cos(a),sY=Math.sin(a),cX=Math.cos(.2),sX=Math.sin(.2);
+  const sp=$('thinking','spin'),ti=$('thinking','tilt'),bs=$('thinking','bandSpd'),bw=$('thinking','bandW'),ba=$('thinking','bandAmp');
+  const a=time*sp,cY=Math.cos(a),sY=Math.sin(a),cX=Math.cos(ti),sX=Math.sin(ti);
   return PTS.map((pt,idx)=>{
     const c=rot(pt,cY,sY,cX,sX),d=(c.z+1)/2;
     let r=.95*(.4+.6*d),op=(.2+.8*d)*.9;
-    const band=Math.abs(c.x-.85*Math.sin(2.2*time));
-    if(band<.5&&d>.25){const i=(1-band/.5)*Math.min(1,(d-.25)/.3);r*=1+.7*i;op=Math.min(1,op+.9*i);}
+    const band=Math.abs(c.x-ba*Math.sin(bs*time));
+    if(band<bw&&d>.25){const i=(1-band/bw)*Math.min(1,(d-.25)/.3);r*=1+.7*i;op=Math.min(1,op+.9*i);}
     return{sx:9.5*c.x+CX,sy:9.5*c.y+CY,depth:d,r:Math.max(.4,r),opacity:clamp(op),rgb:dRGB(d),idx};
   });
 }
 
-// 2 ── PULSE: breathing + vertical glow wave ──────────────────────────
 function statePulse(time){
-  const a=time*.35,breath=1+.14*Math.sin(time*1.8);
-  const cY=Math.cos(a),sY=Math.sin(a),cX=Math.cos(.3),sX=Math.sin(.3);
+  const ro=$('pulse','rot'),ba=$('pulse','bAmp'),bf=$('pulse','bFreq'),ti=$('pulse','tilt'),wd=$('pulse','waveD');
+  const a=time*ro,breath=1+ba*Math.sin(time*bf);
+  const cY=Math.cos(a),sY=Math.sin(a),cX=Math.cos(ti),sX=Math.sin(ti);
   return PTS.map((pt,idx)=>{
     const c=rot(pt,cY,sY,cX,sX),d=(c.z+1)/2,R=9.5*breath;
-    const wave=.5+.5*Math.sin(time*1.8-c.y*2);
+    const wave=.5+.5*Math.sin(time*bf-c.y*wd);
     const r=.45+.35*d+.2*wave,op=(.25+.5*d+.25*wave)*.95;
     return{sx:R*c.x+CX,sy:R*c.y+CY,depth:d,r:Math.max(.35,r),opacity:clamp(op),rgb:dRGB(d),idx};
   });
 }
 
-// 3 ── SWIRL: tornado + spiral band ───────────────────────────────────
 function stateSwirl(time){
-  const cX=Math.cos(.38),sX=Math.sin(.38);
+  const sp=$('swirl','spd'),tw=$('swirl','twist'),ti=$('swirl','tilt'),bs=$('swirl','bSpd'),bt=$('swirl','bThresh');
+  const cX=Math.cos(ti),sX=Math.sin(ti);
   return PTS.map((pt,idx)=>{
-    const lat=pt.y,spd=1.6*(1+.8*lat),a=time*spd;
+    const lat=pt.y,spd=sp*(1+tw*lat),a=time*spd;
     const cA=Math.cos(a),sA=Math.sin(a);
     const rx=pt.x*cA+pt.z*sA,rz=-pt.x*sA+pt.z*cA;
     const x=rx,y=pt.y*cX-rz*sX,z=pt.y*sX+rz*cX,d=(z+1)/2;
-    const sa=Math.atan2(rz,rx),phase=sa-time*2.8+lat*PI;
-    const hi=Math.max(0,(.5+.5*Math.sin(phase))-.7)/.3;
+    const sa=Math.atan2(rz,rx),phase=sa-time*bs+lat*PI;
+    const hi=Math.max(0,(.5+.5*Math.sin(phase))-bt)/(1-bt);
     const r=.95*(.4+.6*d)*(1+.5*hi),op=((.2+.8*d)+.3*hi)*.9;
     return{sx:9.5*x+CX,sy:9.5*y+CY,depth:d,r:Math.max(.4,r),opacity:clamp(op),rgb:dRGB(d),idx};
   });
 }
 
-// 4 ── RIPPLE: spherical wave from pole ───────────────────────────────
 function stateRipple(time){
-  const a=time*.18,cY=Math.cos(a),sY=Math.sin(a),cX=Math.cos(.22),sX=Math.sin(.22);
+  const ro=$('ripple','rot'),wf=$('ripple','wFreq'),ws=$('ripple','wSpd'),wa=$('ripple','wAmp'),cr=$('ripple','crest');
+  const a=time*ro,cY=Math.cos(a),sY=Math.sin(a),cX=Math.cos(.22),sX=Math.sin(.22);
   return PTS.map((pt,idx)=>{
     const dist=Math.acos(Math.max(-1,Math.min(1,pt.y)));
-    const wave=Math.sin(dist*3.5-time*2.8)*.16,sc=1+wave;
+    const wave=Math.sin(dist*wf-time*ws)*wa,sc=1+wave;
     const dp={x:pt.x*sc,y:pt.y*sc,z:pt.z*sc};
     const c=rot(dp,cY,sY,cX,sX),d=(c.z+1)/2;
-    const crest=.5+.5*Math.cos(dist*3.5-time*2.8);
-    const hi=crest>.78?(crest-.78)/.22:0;
+    const crest=.5+.5*Math.cos(dist*wf-time*ws);
+    const hi=crest>cr?(crest-cr)/(1-cr):0;
     const r=.95*(.4+.6*d)*(1+.4*hi),op=((.2+.8*d)+.25*hi)*.9;
     return{sx:9.5*c.x+CX,sy:9.5*c.y+CY,depth:d,r:Math.max(.4,r),opacity:clamp(op),rgb:dRGB(d),idx};
   });
 }
 
-// 5 ── ORBIT: 3 rings + comet trail ───────────────────────────────────
 function stateOrbit(time){
+  const r1=$('orbit','r1'),r2=$('orbit','r2'),r3=$('orbit','r3'),cm=$('orbit','comet'),cw=$('orbit','cometW');
   const rings=[
-    {tx:.25,tz:0,spd:1.3,s:0,n:14},{tx:1.15,tz:.55,spd:-.85,s:14,n:13},{tx:-.75,tz:-.4,spd:.6,s:27,n:13}
+    {tx:.25,tz:0,spd:r1,s:0,n:14},{tx:1.15,tz:.55,spd:r2,s:14,n:13},{tx:-.75,tz:-.4,spd:r3,s:27,n:13}
   ];
   return PTS.map((pt,idx)=>{
     const ring=rings.find(r=>idx>=r.s&&idx<r.s+r.n);
@@ -187,176 +341,145 @@ function stateOrbit(time){
     const cz1=Math.cos(ring.tz),sz1=Math.sin(ring.tz);
     const x2=x*cz1-y1*sz1,y2=x*sz1+y1*cz1;
     const d=clamp((z1+1)/2);
-    const ref=time*ring.spd*1.6;
+    const ref=time*ring.spd*cm;
     const diff=Math.atan2(Math.sin(angle-ref),Math.cos(angle-ref));
-    const hi=Math.abs(diff)<.8?(1-Math.abs(diff)/.8)**2:0;
+    const hi=Math.abs(diff)<cw?(1-Math.abs(diff)/cw)**2:0;
     const r=Math.max(.38,(.42+.44*d)*(1+.6*hi)),op=clamp((.2+.7*d)+.5*hi);
     return{sx:9.5*x2+CX,sy:9.5*y2+CY,depth:d,r,opacity:op,rgb:bRGB(d,hi),idx};
   });
 }
 
-// 6 ── HELIX: DNA double strand + traveling pulse ─────────────────────
 function stateHelix(time){
+  const tu=$('helix','turns'),sp=$('helix','spin'),ps=$('helix','pSpd'),pw=$('helix','pW'),rx=$('helix','radX'),ry=$('helix','radY');
   return PTS.map((pt,idx)=>{
     const strand=idx%2,pos=Math.floor(idx/2),t=pos/19;
-    const angle=t*1.2*2*PI+strand*PI+time*.9;       // 1.2 turns (was 1.5)
+    const angle=t*tu*2*PI+strand*PI+time*sp;
     const x=Math.cos(angle),z=Math.sin(angle),y=t*2-1;
     const d=clamp((z+1)/2);
-    const pT=((time*.5+strand*.5)%1);
+    const pT=((time*ps+strand*.5)%1);
     const dist=Math.abs(t-pT),wrap=Math.min(dist,1-dist);
-    const hi=wrap<.12?(1-wrap/.12)**2:0;
-    // Dim base, small dots — band creates the brightness
-    const baseC=d>.5?RGB_M:RGB_B;
+    const hi=wrap<pw?(1-wrap/pw)**2:0;
     const r=Math.max(.3,(.28+.22*d)*(1+1.2*hi)),op=clamp((.15+.5*d)+.55*hi);
-    return{sx:x*6.5+CX,sy:y*8.5+CY,depth:d,r,opacity:op,
-           rgb:hi>.15?lerpC(baseC,RGB_F,hi):baseC,idx};
+    return{sx:x*rx+CX,sy:y*ry+CY,depth:d,r,opacity:op,rgb:cRGB(d,hi),idx};
   });
 }
 
-// 7 ── NOVA: cascading radial pulse + sweeping band ───────────────────
 function stateNova(time){
-  const a=time*.4,cY=Math.cos(a),sY=Math.sin(a),cX=Math.cos(.2),sX=Math.sin(.2);
+  const ro=$('nova','rot'),pf=$('nova','pFreq'),pr=$('nova','pRange'),bs=$('nova','bSpd'),bw=$('nova','bW');
+  const a=time*ro,cY=Math.cos(a),sY=Math.sin(a),cX=Math.cos(.2),sX=Math.sin(.2);
   return PTS.map((pt,idx)=>{
     const lon=Math.atan2(pt.z,pt.x);
     const delay=lon*.4+pt.y*.7;
-    const pulse=Math.sin(time*1.6+delay),scale=.65+.35*pulse;
+    const pulse=Math.sin(time*pf+delay),scale=(.65+pr)+pr*pulse;
     const c=rot(pt,cY,sY,cX,sX),d=clamp((c.z*scale+1)/2);
-    const bandY=Math.sin(time*1.3),bandDist=Math.abs(pt.y-bandY);
-    const hi=bandDist<.28?(1-bandDist/.28)**1.5:0;
+    const bandY=Math.sin(time*bs),bandDist=Math.abs(pt.y-bandY);
+    const hi=bandDist<bw?(1-bandDist/bw)**1.5:0;
     const r=.95*(.4+.6*d)*(1+.65*hi),op=((.2+.8*d)+.45*hi)*.9;
     return{sx:9.5*scale*c.x+CX,sy:9.5*scale*c.y+CY,depth:d,
            r:Math.max(.4,r),opacity:clamp(op),rgb:bRGB(d,hi),idx};
   });
 }
 
-// 8 ── KNOT: trefoil knot + traveling pulse ───────────────────────────
-//     Math: x = sin(θ)+2sin(2θ), y = cos(θ)−2cos(2θ), z = −sin(3θ)
 function stateKnot(time){
+  const ro=$('knot','rot'),ti=$('knot','tilt'),ps=$('knot','pSpd'),pw=$('knot','pW'),sc=$('knot','scale');
   return PTS.map((pt,idx)=>{
     const theta=(idx/N)*PI*2;
     let x=(Math.sin(theta)+2*Math.sin(2*theta))/3;
     let y=(Math.cos(theta)-2*Math.cos(2*theta))/3;
     let z=-Math.sin(3*theta)/1.5;
-    const a=time*.45,c1=Math.cos(a),s1=Math.sin(a);
-    let rx=x*c1+z*s1,rz=-x*s1+z*c1; x=rx; z=rz;
-    const ct=Math.cos(.35),st=Math.sin(.35);
-    let ry=y*ct-z*st,rz2=y*st+z*ct; y=ry; z=rz2;
+    const a=time*ro,c1=Math.cos(a),s1=Math.sin(a);
+    let rx=x*c1+z*s1,rz=-x*s1+z*c1;x=rx;z=rz;
+    const ct=Math.cos(ti),st=Math.sin(ti);
+    let ry=y*ct-z*st,rz2=y*st+z*ct;y=ry;z=rz2;
     const d=clamp((z+1)/2);
-    const pT=(time*.3)%1,dist=Math.abs(idx/N-pT),wrap=Math.min(dist,1-dist);
-    const hi=wrap<.09?(1-wrap/.09)**2:0;
-    const baseC=d>.5?RGB_M:RGB_B;
+    const pT=(time*ps)%1,dist=Math.abs(idx/N-pT),wrap=Math.min(dist,1-dist);
+    const hi=wrap<pw?(1-wrap/pw)**2:0;
     const r=Math.max(.3,(.28+.22*d)*(1+1.2*hi)),op=clamp((.15+.5*d)+.55*hi);
-    return{sx:x*9.5+CX,sy:y*9.5+CY,depth:d,r,opacity:op,
-           rgb:hi>.15?lerpC(baseC,RGB_F,hi):baseC,idx};
+    return{sx:x*sc+CX,sy:y*sc+CY,depth:d,r,opacity:op,rgb:cRGB(d,hi),idx};
   });
 }
 
-// 9 ── TORUS: donut surface + tube-circling band ──────────────────────
-//     Math: parametric torus (R+r·cos v)·cos u, (R+r·cos v)·sin u, r·sin v
 function stateTorus(time){
-  const R=.65,tr=.28;
+  const R=$('torus','R'),tr=$('torus','r'),sp=$('torus','spin'),ti=$('torus','tilt'),bs=$('torus','bSpd'),bw=$('torus','bW');
   return PTS.map((pt,idx)=>{
-    const u=(idx%10)/10*PI*2;                  // 10 around ring
-    const v=Math.floor(idx/10)/4*PI*2;         // 4 around tube
+    const u=(idx%10)/10*PI*2,v=Math.floor(idx/10)/4*PI*2;
     let x=(R+tr*Math.cos(v))*Math.cos(u);
     let y=(R+tr*Math.cos(v))*Math.sin(u);
     let z=tr*Math.sin(v);
-    // Rotate Y
-    const a=time*.55,c1=Math.cos(a),s1=Math.sin(a);
-    let nx=x*c1+z*s1,nz=-x*s1+z*c1; x=nx; z=nz;
-    // Tilt X for perspective
-    const ct=Math.cos(.55),st=Math.sin(.55);
-    let ny=y*ct-z*st; nz=y*st+z*ct; y=ny; z=nz;
+    const a=time*sp,c1=Math.cos(a),s1=Math.sin(a);
+    let nx=x*c1+z*s1,nz=-x*s1+z*c1;x=nx;z=nz;
+    const ct=Math.cos(ti),st=Math.sin(ti);
+    let ny=y*ct-z*st;nz=y*st+z*ct;y=ny;z=nz;
     const d=clamp((z/.95+1)/2);
-    // Band: bright ring circling the tube cross-section
-    const bv=(time*1.8)%(PI*2);
+    const bv=(time*bs)%(PI*2);
     const vd=Math.abs(Math.atan2(Math.sin(v-bv),Math.cos(v-bv)));
-    const hi=vd<.8?(1-vd/.8)**2:0;
+    const hi=vd<bw?(1-vd/bw)**2:0;
     const r=Math.max(.38,(.42+.42*d)*(1+.6*hi)),op=clamp((.2+.7*d)+.5*hi);
     return{sx:x*9.5+CX,sy:y*9.5+CY,depth:d,r,opacity:op,rgb:bRGB(d,hi),idx};
   });
 }
 
-// 10 ── PENDULUM: wave pendulum — incremental frequencies ─────────────
-//      Math: y_i = A·sin(ω_i·t), ω_i = ω₀ + i·Δω → phase alignment patterns
 function statePendulum(time){
+  const bf=$('pendulum','base'),fs=$('pendulum','step'),am=$('pendulum','amp'),bs=$('pendulum','bSpd'),bw=$('pendulum','bW');
   return PTS.map((pt,idx)=>{
-    const freq=.32+idx*.018;
+    const freq=bf+idx*fs;
     const phase=time*freq*PI*2;
     const x=(idx/(N-1))*2-1;
-    const swing=Math.sin(phase);
-    const y=swing*.78;
-    const z=Math.cos(phase)*.45;
+    const swing=Math.sin(phase),y=swing*am,z=Math.cos(phase)*.45;
     const d=clamp((z+1)/2);
-    // Band: bright vertical bar sweeping left→right through the array
-    const bandX=Math.sin(time*.7);
-    const bDist=Math.abs(x-bandX);
-    const hi=bDist<.25?(1-bDist/.25):0;
-    const baseC=d>.5?RGB_M:RGB_B;
+    const bandX=Math.sin(time*bs),bDist=Math.abs(x-bandX);
+    const hi=bDist<bw?(1-bDist/bw):0;
     const r=Math.max(.28,.28+.2*d+.35*hi),op=clamp(.2+.45*d+.5*hi);
-    return{sx:x*9+CX,sy:y*7.5+CY,depth:d,r,opacity:op,
-           rgb:hi>.15?lerpC(baseC,RGB_F,hi):baseC,idx};
+    return{sx:x*9+CX,sy:y*7.5+CY,depth:d,r,opacity:op,rgb:cRGB(d,hi),idx};
   });
 }
 
-// 11 ── WOBBLE: precessing tumble + equatorial band ──────────────────
-//      sphere spins while the axis itself wanders — like a dying top
 function stateWobble(time){
-  const a1=time*1.2;
-  const a2=Math.sin(time*.3)*.6;
-  const a3=Math.cos(time*.23)*.45;
+  const sp=$('wobble','spin'),pa=$('wobble','pAmp'),pf=$('wobble','pFreq'),bs=$('wobble','bSpd'),br=$('wobble','bRange'),bw=$('wobble','bW');
+  const a1=time*sp,a2=Math.sin(time*pf)*pa,a3=Math.cos(time*pf*.77)*pa*.75;
   const c1=Math.cos(a1),s1=Math.sin(a1),c2=Math.cos(a2),s2=Math.sin(a2),c3=Math.cos(a3),s3=Math.sin(a3);
   return PTS.map((pt,idx)=>{
     let x=pt.x*c1+pt.z*s1,z=-pt.x*s1+pt.z*c1,y=pt.y;
-    let ny=y*c2-z*s2,nz=y*s2+z*c2; y=ny;z=nz;
-    let nx=x*c3-y*s3; ny=x*s3+y*c3; x=nx;y=ny;
+    let ny=y*c2-z*s2,nz=y*s2+z*c2;y=ny;z=nz;
+    let nx=x*c3-y*s3;ny=x*s3+y*c3;x=nx;y=ny;
     const d=clamp((z+1)/2);
-    // Band: sweeping horizontal band (wobbles with the tumble)
-    const bandY=Math.sin(time*1.8)*.55;
-    const bDist=Math.abs(y-bandY);
-    const hi=bDist<.3?(1-bDist/.3):0;
+    const bandY=Math.sin(time*bs)*br,bDist=Math.abs(y-bandY);
+    const hi=bDist<bw?(1-bDist/bw):0;
     const r=.95*(.4+.6*d)*(1+.6*hi),op=((.2+.8*d)+.45*hi)*.9;
     return{sx:9.5*x+CX,sy:9.5*y+CY,depth:d,r:Math.max(.4,r),opacity:clamp(op),rgb:bRGB(d,hi),idx};
   });
 }
 
-// 12 ── RAIN: cascading fall + horizontal sweep band ─────────────────
 function stateRain(time){
+  const sp=$('rain','spd'),sv=$('rain','var'),dr=$('rain','drift'),bs=$('rain','bSpd'),bw=$('rain','bW');
   return PTS.map((pt,idx)=>{
     const s=idx*1.618;
-    const speed=.4+Math.sin(s*3.7)*.12;
-    const x=pt.x*.65+Math.sin(time*.5+s*2.1)*.08;
-    const y=1-((time*speed+s*.7)%2);              // falls & wraps
-    const z=pt.z*.35;
-    const d=clamp((z+.4)/.8);
-    // Band: horizontal bright wave sweeping down
-    const bandY=1-((time*.55)%2);
+    const speed=sp+Math.sin(s*3.7)*sv;
+    const x=pt.x*.65+Math.sin(time*.5+s*2.1)*dr;
+    const y=1-((time*speed+s*.7)%2);
+    const z=pt.z*.35,d=clamp((z+.4)/.8);
+    const bandY=1-((time*bs)%2);
     const bDist=Math.min(Math.abs(y-bandY),Math.abs(y-bandY+2),Math.abs(y-bandY-2));
-    const hi=bDist<.25?(1-bDist/.25):0;
+    const hi=bDist<bw?(1-bDist/bw):0;
     const r=Math.max(.38,.42+.35*d+.3*hi),op=clamp(.3+.45*d+.35*hi);
     return{sx:x*8.5+CX,sy:y*7.5+CY,depth:d,r,opacity:op,rgb:bRGB(d,hi),idx};
   });
 }
 
-// 13 ── FIGURE8: lemniscate infinity loop + traveling pulse ───────────
-//      Math: x=sin(θ), y=sin(2θ)/2 — Lissajous 1:2 figure
 function stateFigure8(time){
+  const lp=$('figure8','loop'),ys=$('figure8','yScale'),zd=$('figure8','zDepth'),ro=$('figure8','rot'),ps=$('figure8','pSpd'),pw=$('figure8','pW');
   return PTS.map((pt,idx)=>{
-    const theta=(idx/N)*PI*2+time*.45;
-    let x=Math.sin(theta);
-    let y=Math.sin(2*theta)*.55;
-    let z=Math.cos(theta)*.35;
-    const a=time*.25,c1=Math.cos(a),s1=Math.sin(a);
-    const rx=x*c1+z*s1,rz=-x*s1+z*c1; x=rx;z=rz;
+    const theta=(idx/N)*PI*2+time*lp;
+    let x=Math.sin(theta),y=Math.sin(2*theta)*ys,z=Math.cos(theta)*zd;
+    const a=time*ro,c1=Math.cos(a),s1=Math.sin(a);
+    const rx=x*c1+z*s1,rz=-x*s1+z*c1;x=rx;z=rz;
     const ct=Math.cos(.2),st=Math.sin(.2);
-    const ry=y*ct-z*st; z=y*st+z*ct; y=ry;
+    const ry=y*ct-z*st;z=y*st+z*ct;y=ry;
     const d=clamp((z+1)/2);
-    const pT=(time*.35)%1,dist=Math.abs(idx/N-pT),wrap=Math.min(dist,1-dist);
-    const hi=wrap<.1?(1-wrap/.1)**2:0;
-    const baseC=d>.5?RGB_M:RGB_B;
+    const pT=(time*ps)%1,dist=Math.abs(idx/N-pT),wrap=Math.min(dist,1-dist);
+    const hi=wrap<pw?(1-wrap/pw)**2:0;
     const r=Math.max(.3,(.28+.22*d)*(1+1.2*hi)),op=clamp((.15+.5*d)+.55*hi);
-    return{sx:x*9+CX,sy:y*9+CY,depth:d,r,opacity:op,
-           rgb:hi>.15?lerpC(baseC,RGB_F,hi):baseC,idx};
+    return{sx:x*9+CX,sy:y*9+CY,depth:d,r,opacity:op,rgb:cRGB(d,hi),idx};
   });
 }
 
@@ -371,7 +494,7 @@ const STATES=[
   {name:'rain',fn:stateRain},        {name:'figure8',fn:stateFigure8},
 ];
 
-// ---------- Blend ----------
+// ── Blend ────────────────────────────────────────────────────────────
 function blend(from,to,t){
   return from.map((f,i)=>{const p=to[i];return{
     sx:lerp(f.sx,p.sx,t),sy:lerp(f.sy,p.sy,t),depth:lerp(f.depth,p.depth,t),
@@ -379,69 +502,92 @@ function blend(from,to,t){
     rgb:lerpC(f.rgb,p.rgb,t),idx:f.idx};});
 }
 
-// ---------- DOM ----------
+// ── DOM ──────────────────────────────────────────────────────────────
 const svg=document.getElementById("ball"),
       trigger=document.getElementById("trigger"),
       labelEl=document.getElementById("label"),
       navEl=document.getElementById("nav"),
       btnsEl=document.getElementById("buttons"),
+      panelEl=document.getElementById("panel"),
       ns="http://www.w3.org/2000/svg";
 
 const circles=PTS.map(()=>{const el=document.createElementNS(ns,"circle");svg.appendChild(el);return el;});
 const navDots=STATES.map((_,i)=>{const d=document.createElement("span");d.className="dot"+(i===0?" on":"");navEl.appendChild(d);return d;});
-
-// Buttons
 const btns=STATES.map((st,i)=>{
   const b=document.createElement("button");
-  b.textContent=st.name; b.className=i===0?"on":"";
+  b.textContent=st.name;b.className=i===0?"on":"";
   b.addEventListener("click",()=>switchTo(i));
-  btnsEl.appendChild(b); return b;
+  btnsEl.appendChild(b);return b;
 });
 
-// ---------- State machine ----------
-let fromIdx=0,toIdx=0,progress=1,trStart=null;
+// ── Parameter Panel ──────────────────────────────────────────────────
+function buildPanel(stateName){
+  panelEl.innerHTML='';
+  const defs=PARAM_DEFS[stateName];
+  if(!defs||!defs.length){panelEl.innerHTML='<div style="color:#444;text-align:center;padding:4px">No parameters</div>';return;}
+  const grid=document.createElement('div');grid.className='param-grid';
+  defs.forEach(p=>{
+    const k=stateName+'.'+p.key;
+    const row=document.createElement('div');row.className='pr';
+    const lbl=document.createElement('span');lbl.className='pr-label';lbl.textContent=p.label;
+    const sl=document.createElement('input');sl.type='range';sl.min=p.min;sl.max=p.max;sl.step=p.step;sl.value=CFG[k];
+    const val=document.createElement('span');val.className='pr-val';val.textContent=Number(CFG[k]).toFixed(2);
+    sl.addEventListener('input',()=>{CFG[k]=parseFloat(sl.value);val.textContent=Number(CFG[k]).toFixed(2);persistCFG();});
+    row.append(lbl,sl,val);grid.appendChild(row);
+  });
+  panelEl.appendChild(grid);
+  // Actions
+  const acts=document.createElement('div');acts.className='panel-actions';
+  acts.innerHTML='<button data-a="reset">Reset</button><button data-a="save">Save preset</button><button data-a="load">Load preset</button><span class="spacer"></span><button data-a="export">Export JSON</button><button data-a="import">Import JSON</button>';
+  acts.addEventListener('click',e=>{
+    const a=e.target.dataset.a;if(!a)return;
+    if(a==='reset'){PARAM_DEFS[stateName].forEach(p=>{CFG[stateName+'.'+p.key]=p.default;});buildPanel(stateName);persistCFG();}
+    if(a==='save'){const n=prompt('Preset name:');if(!n)return;const ps=JSON.parse(localStorage.getItem('dotanim_presets')||'{}');const sub={};Object.keys(CFG).forEach(k=>{if(k.startsWith(stateName+'.'))sub[k]=CFG[k];});ps[stateName+'/'+n]=sub;localStorage.setItem('dotanim_presets',JSON.stringify(ps));alert('Saved: '+n);}
+    if(a==='load'){const ps=JSON.parse(localStorage.getItem('dotanim_presets')||'{}');const names=Object.keys(ps).filter(n=>n.startsWith(stateName+'/')).map(n=>n.split('/')[1]);if(!names.length){alert('No presets for '+stateName);return;}const n=prompt('Load preset:\n'+names.join(', '));if(n&&ps[stateName+'/'+n]){Object.assign(CFG,ps[stateName+'/'+n]);buildPanel(stateName);persistCFG();}}
+    if(a==='export'){navigator.clipboard.writeText(JSON.stringify(CFG,null,2)).then(()=>alert('Copied to clipboard'));}
+    if(a==='import'){const txt=prompt('Paste JSON config:');if(!txt)return;try{Object.assign(CFG,JSON.parse(txt));buildPanel(stateName);persistCFG();}catch(e){alert('Invalid JSON');}}
+  });
+  panelEl.appendChild(acts);
+}
 
+// ── State machine ────────────────────────────────────────────────────
+let fromIdx=0,toIdx=0,progress=1,trStart=null;
 function trDur(f,t){return STATES[t].name==='idle'?1.2:STATES[f].name==='idle'?.7:.8;}
 function trEase(f){return STATES[f].name==='idle'?easeO3:easeIO3;}
 
 function switchTo(i){
   if(i===toIdx&&progress>=1)return;
-  fromIdx=toIdx; toIdx=i; progress=0; trStart=null;
+  fromIdx=toIdx;toIdx=i;progress=0;trStart=null;
   labelEl.textContent=STATES[i].name;
   navDots.forEach((d,j)=>d.classList.toggle("on",j===i));
   btns.forEach((b,j)=>b.classList.toggle("on",j===i));
+  buildPanel(STATES[i].name);
 }
-
-// Ball click = cycle forward
 trigger.addEventListener("click",()=>switchTo((toIdx+1)%STATES.length));
+buildPanel('idle');
 
-// ---------- Animation loop ----------
+// ── Animation loop ───────────────────────────────────────────────────
 let elapsed=0,lastTime=0;
-
 function frame(now){
   const t=now/1e3,dt=lastTime===0?.016:Math.min(t-lastTime,.05);
-  lastTime=t; elapsed+=dt;
-
+  lastTime=t;elapsed+=dt;
   if(progress<1){
-    if(!trStart) trStart=t;
+    if(!trStart)trStart=t;
     const raw=clamp((t-trStart)/trDur(fromIdx,toIdx));
     progress=trEase(fromIdx)(raw);
-    if(raw>=1) progress=1;
+    if(raw>=1)progress=1;
   }
-
   let particles=progress>=1
-    ? STATES[toIdx].fn(elapsed)
-    : blend(STATES[fromIdx].fn(elapsed),STATES[toIdx].fn(elapsed),progress);
-
+    ?STATES[toIdx].fn(elapsed)
+    :blend(STATES[fromIdx].fn(elapsed),STATES[toIdx].fn(elapsed),progress);
   particles.forEach(p=>{
     const el=circles[p.idx];
-    el.setAttribute("cx",p.sx); el.setAttribute("cy",p.sy);
-    el.setAttribute("r",p.r);   el.setAttribute("fill",rgbStr(p.rgb));
+    el.setAttribute("cx",p.sx);el.setAttribute("cy",p.sy);
+    el.setAttribute("r",p.r);el.setAttribute("fill",rgbStr(p.rgb));
     el.setAttribute("opacity",p.opacity<.005?0:p.opacity);
     el._d=p.depth;
   });
   [...circles].sort((a,b)=>a._d-b._d).forEach(el=>svg.appendChild(el));
-
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
