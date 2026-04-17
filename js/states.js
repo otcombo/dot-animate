@@ -185,13 +185,22 @@ function stateNova(time) {
   });
 }
 
-// 8 ── KNOT: trefoil knot + traveling pulse ────────────────────────
+// 8 ── KNOT: trefoil knot + traveling dots + traveling pulse ─────
 //     Math: x=sin θ+2sin 2θ,  y=cos θ−2cos 2θ,  z=−sin 3θ
+//     24 dots on the curve (16 hidden at center) → ~4.9 svg-unit
+//     spacing at scale=9.5, matching thinking. `loop` makes each dot
+//     flow along the curve instead of sitting at a fixed position;
+//     `rot` still tumbles the whole knot in 3D for extra interest.
+const KNOT_N = 24;
 function stateKnot(time) {
-  const ro=$('knot','rot'), ti=$('knot','tilt'), ps=$('knot','pSpd');
-  const pw=$('knot','pW'), sc=$('knot','scale');
+  const lp=$('knot','loop'), ro=$('knot','rot'), ti=$('knot','tilt');
+  const ps=$('knot','pSpd'), pw=$('knot','pW'), sc=$('knot','scale');
   return PTS.map((pt, idx) => {
-    const theta = (idx / N) * PI * 2;
+    if (idx >= KNOT_N) {
+      return { sx: CX, sy: CY, depth: 0, r: .2, opacity: 0, rgb: RGB_F, idx };
+    }
+    // theta now advances over time — dots flow along the curve
+    const theta = (idx / KNOT_N) * PI * 2 + time * lp;
     let x = (Math.sin(theta) + 2 * Math.sin(2 * theta)) / 3;
     let y = (Math.cos(theta) - 2 * Math.cos(2 * theta)) / 3;
     let z = -Math.sin(3 * theta) / 1.5;
@@ -201,7 +210,7 @@ function stateKnot(time) {
     let ry = y * ct - z * st, rz2 = y * st + z * ct; y = ry; z = rz2;
     const d = clamp((z + 1) / 2);
     const pT = (time * ps) % 1;
-    const dist = Math.abs(idx / N - pT), wrap = Math.min(dist, 1 - dist);
+    const dist = Math.abs(idx / KNOT_N - pT), wrap = Math.min(dist, 1 - dist);
     const hi = wrap < pw ? (1 - wrap / pw) ** 2 : 0;
     const r = Math.max(.4, .95 * (.4 + .6 * d) * (1 + .9 * hi));
     const op = clamp((.2 + .8 * d) * .9 + .6 * hi);

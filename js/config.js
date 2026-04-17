@@ -70,7 +70,8 @@ const PARAM_DEFS = {
     { key: 'bW',       label: 'Band width',   min: .1,  max: .6,  step: .02,  default: .28 },
   ],
   knot: [
-    { key: 'rot',      label: 'Rotation',     min: .1,  max: 1.5, step: .05,  default: .45 },
+    { key: 'loop',     label: 'Loop speed',   min: 0,   max: 1,   step: .05,  default: .2 },
+    { key: 'rot',      label: 'Rotation',     min: 0,   max: 1.5, step: .05,  default: .35 },
     { key: 'tilt',     label: 'Tilt',         min: 0,   max: 1,   step: .05,  default: .35 },
     { key: 'pSpd',     label: 'Pulse speed',  min: .05, max: 1,   step: .05,  default: .3 },
     { key: 'pW',       label: 'Pulse width',  min: .03, max: .2,  step: .01,  default: .09 },
