@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dot Animate — 11 States</title>
+<title>Dot Animate — 16 States</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -36,7 +36,7 @@
   .nav .dot.on { background: #74B8D4; transform: scale(1.4); }
   .buttons {
     display: flex; flex-wrap: wrap; gap: 5px;
-    justify-content: center; max-width: 360px; margin-top: 4px;
+    justify-content: center; max-width: 420px; margin-top: 4px;
   }
   .buttons button {
     background: #161616; color: #555;
@@ -64,8 +64,9 @@
 
 <script>
 // =====================================================================
-//  Dot Animate — 11 states
-//  idle thinking pulse swirl ripple orbit helix nova knot torus pendulum
+//  Dot Animate — 16 states
+//  idle thinking pulse swirl ripple orbit helix nova
+//  knot torus pendulum wobble pinch flutter rain figure8
 // =====================================================================
 
 // ---------- Palette ----------
@@ -294,6 +295,110 @@ function statePendulum(time){
   });
 }
 
+// 11 ── WOBBLE: precessing tumble + equatorial band ──────────────────
+//      sphere spins while the axis itself wanders — like a dying top
+function stateWobble(time){
+  const a1=time*1.2;
+  const a2=Math.sin(time*.3)*.6;
+  const a3=Math.cos(time*.23)*.45;
+  const c1=Math.cos(a1),s1=Math.sin(a1),c2=Math.cos(a2),s2=Math.sin(a2),c3=Math.cos(a3),s3=Math.sin(a3);
+  return PTS.map((pt,idx)=>{
+    // Y spin → X wobble → Z wobble
+    let x=pt.x*c1+pt.z*s1,z=-pt.x*s1+pt.z*c1,y=pt.y;
+    let ny=y*c2-z*s2,nz=y*s2+z*c2; y=ny;z=nz;
+    let nx=x*c3-y*s3; ny=x*s3+y*c3; x=nx;y=ny;
+    const d=clamp((z+1)/2);
+    // Band: equator glows (wobbles with the sphere)
+    const eq=Math.abs(y);
+    const hi=eq<.22?(1-eq/.22)*.75:0;
+    const r=.95*(.4+.6*d)*(1+.5*hi),op=((.2+.8*d)+.3*hi)*.9;
+    return{sx:9.5*x+CX,sy:9.5*y+CY,depth:d,r:Math.max(.4,r),opacity:clamp(op),rgb:bRGB(d,hi),idx};
+  });
+}
+
+// 12 ── PINCH: squash-stretch cycle + deformation band ────────────────
+//      sphere squishes like a stress ball, axes cycle 120° apart
+function statePinch(time){
+  const a=time*.3,c1=Math.cos(a),s1=Math.sin(a),ct=Math.cos(.2),st=Math.sin(.2);
+  const ph=time*1.0;
+  const sX=1+.28*Math.sin(ph),sY=1+.28*Math.sin(ph+PI*2/3),sZ=1+.28*Math.sin(ph+PI*4/3);
+  return PTS.map((pt,idx)=>{
+    const dp={x:pt.x*sX,y:pt.y*sY,z:pt.z*sZ};
+    const c=rot(dp,c1,s1,ct,st);
+    const d=clamp((c.z/1.3+1)/2);
+    // Band: highlight the stretched axis
+    const stretch=Math.max(sX,sY,sZ);
+    const bandAxis=sX===stretch?Math.abs(pt.x):sY===stretch?Math.abs(pt.y):Math.abs(pt.z);
+    const hi=bandAxis>.65?(bandAxis-.65)/.35:0;
+    const r=.95*(.4+.6*d)*(1+.5*hi),op=((.2+.8*d)+.3*hi)*.9;
+    return{sx:9.5*c.x+CX,sy:9.5*c.y+CY,depth:clamp(d),
+           r:Math.max(.4,r),opacity:clamp(op),rgb:bRGB(clamp(d),hi),idx};
+  });
+}
+
+// 13 ── FLUTTER: butterfly wings — two halves flap open/close ────────
+function stateFlutter(time){
+  const flapAmp=Math.sin(time*2.2)*.65;
+  const a=time*.3,c0=Math.cos(a),s0=Math.sin(a);
+  return PTS.map((pt,idx)=>{
+    const side=pt.x>0?1:-1;
+    // Flap each half around the YZ plane
+    const flap=flapAmp*side;
+    const cf=Math.cos(flap),sf=Math.sin(flap);
+    let x=pt.x*cf+pt.z*sf,z=-pt.x*sf+pt.z*cf,y=pt.y;
+    // Slow overall rotation
+    const rx=x*c0+z*s0,rz=-x*s0+z*c0; x=rx;z=rz;
+    const ct=Math.cos(.2),st=Math.sin(.2);
+    const ry=y*ct-z*st; z=y*st+z*ct; y=ry;
+    const d=clamp((z+1)/2);
+    // Band: spine glow where the two halves meet
+    const spine=Math.abs(pt.x);
+    const hi=spine<.18?(1-spine/.18):0;
+    const r=.95*(.4+.6*d)*(1+.55*hi),op=((.2+.8*d)+.35*hi)*.9;
+    return{sx:9.5*x+CX,sy:9.5*y+CY,depth:d,r:Math.max(.4,r),opacity:clamp(op),rgb:bRGB(d,hi),idx};
+  });
+}
+
+// 14 ── RAIN: cascading fall + horizontal sweep band ─────────────────
+function stateRain(time){
+  return PTS.map((pt,idx)=>{
+    const s=idx*1.618;
+    const speed=.4+Math.sin(s*3.7)*.12;
+    const x=pt.x*.65+Math.sin(time*.5+s*2.1)*.08;
+    const y=1-((time*speed+s*.7)%2);              // falls & wraps
+    const z=pt.z*.35;
+    const d=clamp((z+.4)/.8);
+    // Band: horizontal bright wave sweeping down
+    const bandY=1-((time*.55)%2);
+    const bDist=Math.min(Math.abs(y-bandY),Math.abs(y-bandY+2),Math.abs(y-bandY-2));
+    const hi=bDist<.25?(1-bDist/.25):0;
+    const r=Math.max(.38,.42+.35*d+.3*hi),op=clamp(.3+.45*d+.35*hi);
+    return{sx:x*8.5+CX,sy:y*7.5+CY,depth:d,r,opacity:op,rgb:bRGB(d,hi),idx};
+  });
+}
+
+// 15 ── FIGURE8: lemniscate infinity loop + traveling pulse ───────────
+//      Math: x=sin(θ), y=sin(2θ)/2 — Lissajous 1:2 figure
+function stateFigure8(time){
+  return PTS.map((pt,idx)=>{
+    const theta=(idx/N)*PI*2+time*.45;           // dots travel along ∞
+    let x=Math.sin(theta);
+    let y=Math.sin(2*theta)*.55;
+    let z=Math.cos(theta)*.35;
+    // Slow tilt rotation
+    const a=time*.25,c1=Math.cos(a),s1=Math.sin(a);
+    const rx=x*c1+z*s1,rz=-x*s1+z*c1; x=rx;z=rz;
+    const ct=Math.cos(.2),st=Math.sin(.2);
+    const ry=y*ct-z*st; z=y*st+z*ct; y=ry;
+    const d=clamp((z+1)/2);
+    // Traveling pulse along the loop
+    const pT=(time*.35)%1,dist=Math.abs(idx/N-pT),wrap=Math.min(dist,1-dist);
+    const hi=wrap<.1?(1-wrap/.1)**2:0;
+    const r=Math.max(.38,(.42+.42*d)*(1+.7*hi)),op=clamp((.2+.7*d)+.55*hi);
+    return{sx:x*7.5+CX,sy:y*7.5+CY,depth:d,r,opacity:op,rgb:bRGB(d,hi),idx};
+  });
+}
+
 // =====================================================================
 const STATES=[
   {name:'idle',fn:stateIdle},        {name:'thinking',fn:stateThinking},
@@ -301,7 +406,9 @@ const STATES=[
   {name:'ripple',fn:stateRipple},    {name:'orbit',fn:stateOrbit},
   {name:'helix',fn:stateHelix},      {name:'nova',fn:stateNova},
   {name:'knot',fn:stateKnot},        {name:'torus',fn:stateTorus},
-  {name:'pendulum',fn:statePendulum},
+  {name:'pendulum',fn:statePendulum},{name:'wobble',fn:stateWobble},
+  {name:'pinch',fn:statePinch},      {name:'flutter',fn:stateFlutter},
+  {name:'rain',fn:stateRain},        {name:'figure8',fn:stateFigure8},
 ];
 
 // ---------- Blend ----------
